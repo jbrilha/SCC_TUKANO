@@ -41,7 +41,9 @@ public class Test {
 		 show(users.createUser( new User("liskov", "54321", "liskov@mit.edu", "Barbara Liskov") ));
 		 
 		 show(users.updateUser("wales", "12345", new User("wales", "12345", "jimmy@wikipedia.com", "" ) ));
-		 
+
+        // TODO --> THIS WAS NOT HERE ORIGINALLY MIGHT NEED TO BE REMOVED BEFORE SUBMISSION
+		 show(users.getUser("wales", "12345"));
 		 
 		 show(users.searchUsers(""));
 		
