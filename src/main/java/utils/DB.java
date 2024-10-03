@@ -21,7 +21,8 @@ public class DB {
 	
 	
 	public static <T> Result<T> getOne(String id, Class<T> clazz) {
-		return Hibernate.getInstance().getOne(id, clazz);
+		return CosmosDB.getInstance().getOne(id, clazz);
+		// return Hibernate.getInstance().getOne(id, clazz);
 	}
 	
 	public static <T> Result<T> deleteOne(T obj) {
@@ -34,7 +35,8 @@ public class DB {
 	
 	public static <T> Result<T> insertOne( T obj) {
 		System.err.println("DB.insert:" + obj );
-		return Result.errorOrValue(Hibernate.getInstance().persistOne(obj), obj);
+		return Result.errorOrValue(CosmosDB.getInstance().insertOne(obj), obj);
+		// return Result.errorOrValue(Hibernate.getInstance().persistOne(obj), obj);
 	}
 	
 	public static <T> Result<T> transaction( Consumer<Session> c) {
