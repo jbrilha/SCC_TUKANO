@@ -7,6 +7,7 @@ import java.util.function.Function;
 import org.hibernate.Session;
 
 import tukano.api.Result;
+import utils.azure.CosmosDB;
 
 public class DB {
 

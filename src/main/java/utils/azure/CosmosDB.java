@@ -1,4 +1,4 @@
-package utils;
+package utils.azure;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -99,7 +99,6 @@ public class CosmosDB {
 	}
 	
 	static Result.ErrorCode errorCodeFromStatus( int status ) {
-        System.out.println("\n\nSTATUS: " + status);
 		return switch( status ) {
 		case 200 -> ErrorCode.OK;
 		case 404 -> ErrorCode.NOT_FOUND;
