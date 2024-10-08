@@ -1,16 +1,17 @@
 package tukano.impl;
 
 import static java.lang.String.format;
-import static tukano.api.Result.ErrorCode.FORBIDDEN;
 import static tukano.api.Result.error;
+import static tukano.api.Result.ErrorCode.FORBIDDEN;
+
+import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 import com.azure.core.util.BinaryData;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobContainerClientBuilder;
-import java.nio.file.Path;
-import java.util.function.Consumer;
-import java.util.logging.Logger;
+
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.impl.rest.TukanoRestServer;
@@ -18,6 +19,7 @@ import tukano.impl.storage.BlobStorage;
 import tukano.impl.storage.FilesystemStorage;
 import utils.Hash;
 import utils.Hex;
+import utils.azure.AzBlobStorage;
 
 public class JavaBlobs implements Blobs {
     private static final String BLOBS_CONTAINER_NAME = "images";
@@ -28,6 +30,7 @@ public class JavaBlobs implements Blobs {
 
     public String baseURI;
     private BlobStorage storage;
+    private AzBlobStorage azStorage;
 
     synchronized public static Blobs getInstance() {
         if (instance == null)
@@ -37,6 +40,7 @@ public class JavaBlobs implements Blobs {
 
     private JavaBlobs() {
         storage = new FilesystemStorage();
+        azStorage = new AzBlobStorage();
         baseURI =
             String.format("%s/%s/", TukanoRestServer.serverURI, Blobs.NAME);
     }
@@ -51,32 +55,12 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
-        try {
-            BinaryData data = BinaryData.fromBytes(bytes);
+        // TODO move "toPath" call to write method of FSStorage
+        // to allow for sending only yhe blobId to that method so that the
+        // interface works the same for CosmosDB
+        // return storage.write(toPath(blobId), bytes);
 
-            System.out.println("\n\n\n" + storageConnectionString + "\n\n\n");
-            // Get container client
-            BlobContainerClient containerClient =
-                new BlobContainerClientBuilder()
-                    .connectionString(storageConnectionString)
-                    .containerName(BLOBS_CONTAINER_NAME)
-                    .buildClient();
-
-            System.out.println("\n\ncc String " + containerClient.toString());
-            // Get client to blob
-            BlobClient blob = containerClient.getBlobClient(blobId);
-
-            // Upload contents from BinaryData (check documentation for other
-            // alternatives)
-            blob.upload(data);
-
-            System.out.println("File uploaded : " + blobId);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return storage.write(toPath(blobId), bytes);
+        return azStorage.write(blobId, bytes);
     }
 
     @Override
@@ -87,30 +71,8 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
-		try {
-			// Get container client
-			BlobContainerClient containerClient = new BlobContainerClientBuilder()
-														.connectionString(storageConnectionString)
-														.containerName(BLOBS_CONTAINER_NAME)
-														.buildClient();
-
-            System.out.println("\n\ncc String " + containerClient.toString());
-
-			// Get client to blob
-			BlobClient blob = containerClient.getBlobClient(blobId);
-
-			// Download contents to BinaryData (check documentation for other alternatives)
-			BinaryData data = blob.downloadContent();
-			
-			byte[] arr = data.toBytes();
-			
-			System.out.println( "Blob size : " + arr.length);
-		} catch( Exception e) {
-			e.printStackTrace();
-		}
-
-
-        return storage.read(toPath(blobId));
+        return azStorage.read(blobId);
+        // return storage.read(toPath(blobId));
     }
 
     @Override
@@ -134,7 +96,8 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
-        return storage.delete(toPath(blobId));
+        // return storage.delete(toPath(blobId));
+        return azStorage.delete(blobId);
     }
 
     @Override
