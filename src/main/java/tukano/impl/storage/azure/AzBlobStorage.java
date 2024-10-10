@@ -1,4 +1,4 @@
-package utils.azure;
+package tukano.impl.storage.azure;
 
 import static tukano.api.Result.error;
 import static tukano.api.Result.ok;

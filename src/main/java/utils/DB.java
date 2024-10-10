@@ -8,7 +8,7 @@ import org.hibernate.Session;
 
 import tukano.api.Result;
 import tukano.api.User;
-import utils.azure.CosmosDB;
+import tukano.impl.storage.azure.CosmosDB;
 
 public class DB {
 

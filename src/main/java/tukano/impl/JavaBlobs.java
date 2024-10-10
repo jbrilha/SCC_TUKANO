@@ -19,7 +19,7 @@ import tukano.impl.storage.BlobStorage;
 import tukano.impl.storage.FilesystemStorage;
 import utils.Hash;
 import utils.Hex;
-import utils.azure.AzBlobStorage;
+import tukano.impl.storage.azure.AzBlobStorage;
 
 public class JavaBlobs implements Blobs {
     private static final String BLOBS_CONTAINER_NAME = "images";

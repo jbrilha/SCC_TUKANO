@@ -1,4 +1,4 @@
-package utils.azure;
+package tukano.impl.storage.azure;
 
 import java.util.List;
 import java.util.function.Supplier;
