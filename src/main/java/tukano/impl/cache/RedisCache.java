@@ -37,13 +37,13 @@ public class RedisCache /* implements Cache */ {
     // @Override
     public static <T> Result<T> getOne(String key, Class<T> clazz) {
         try (var jedis = RedisCache.getCachePool().getResource()) {
-            var obj = JSON.decode(jedis.get(key), clazz);
+            var obj = jedis.get(key); // why do the docs say this can return 'nil' :(
 
-            if(obj.equals("nil")) { // Golang mentioned??
+            if(obj == null) {
                 return Result.error(ErrorCode.NOT_FOUND);
             }
 
-            return Result.ok(obj);
+            return Result.ok(JSON.decode(obj, clazz));
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error(ErrorCode.INTERNAL_ERROR);
