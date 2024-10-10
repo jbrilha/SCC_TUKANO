@@ -1,8 +1,10 @@
 package test;
 
+import utils.JSON;
 import java.io.File;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Random;
 
 import tukano.api.Result;
@@ -11,8 +13,12 @@ import tukano.clients.rest.RestBlobsClient;
 import tukano.clients.rest.RestShortsClient;
 import tukano.clients.rest.RestUsersClient;
 import tukano.impl.rest.TukanoRestServer;
+import tukano.impl.cache.RedisCache;
+import tukano.api.UserDAO;
 
 public class Test {
+    private static final String MOST_RECENT_USERS_LIST = "MostRecentUsers";
+    private static final String MUM_USERS_COUNTER = "NumUsers";
 	
 	static {
 		System.setProperty("java.util.logging.SimpleFormatter.format", "%4$s: %5$s");
@@ -56,6 +62,7 @@ public class Test {
 		show(shorts.createShort("wales", "12345"));
 		show(shorts.createShort("wales", "12345"));
 
+
 		var blobUrl = URI.create(s2.value().getBlobUrl());
 		System.out.println( "------->" + blobUrl );
 		
@@ -92,9 +99,46 @@ public class Test {
 //			System.out.println( Hex.of(Hash.sha256( bytes )) + "-->" + Hex.of(Hash.sha256( r.value() )));
 //			
 //		});
-		
-		 show(users.deleteUser("wales", "12345"));
 
+        try {
+            Locale.setDefault(Locale.US);
+            var id1 = "john-" + System.currentTimeMillis();
+            var user1 = new User(id1, "12345", "john@nova.pt", "John Smith");
+
+            try (var jedis = RedisCache.getCachePool().getResource()) {
+
+                var key = "user:" + user1.getId();
+                var value = JSON.encode(user1);
+
+                jedis.set(key, value);
+                jedis.expire(key, 3000);
+
+                var user2 = JSON.decode(jedis.get(key), User.class);
+                System.out.println(user2);
+
+                var user3 = JSON.decode(jedis.get(key), UserDAO.class);
+                System.out.println(user3);
+
+                var cnt = jedis.lpush(MOST_RECENT_USERS_LIST, value);
+                if (cnt > 5)
+                    jedis.ltrim(MOST_RECENT_USERS_LIST, 0, 4);
+
+                var list = jedis.lrange(MOST_RECENT_USERS_LIST, 0, -1);
+
+                System.out.println(MOST_RECENT_USERS_LIST);
+
+                for (String s : list)
+                    System.out.println(JSON.decode(s, User.class));
+
+                cnt = jedis.incr(MUM_USERS_COUNTER);
+                System.out.println("Num users : " + cnt);
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        show(users.deleteUser("wales", "12345"));
 		System.exit(0);
 	}
 	
