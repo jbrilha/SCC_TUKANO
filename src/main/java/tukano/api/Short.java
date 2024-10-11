@@ -17,6 +17,7 @@ import tukano.impl.Token;
 public class Short {
 	
 	@Id
+	private String id; // TODO explain why this is here for CosmosDB
 	String shortId;
 	String ownerId;
 	String blobUrl;
@@ -27,6 +28,7 @@ public class Short {
 	
 	public Short(String shortId, String ownerId, String blobUrl, long timestamp, int totalLikes) {
 		super();
+		this.id = shortId;
 		this.shortId = shortId;
 		this.ownerId = ownerId;
 		this.blobUrl = blobUrl;
@@ -36,6 +38,14 @@ public class Short {
 
 	public Short(String shortId, String ownerId, String blobUrl) {
 		this( shortId, ownerId, blobUrl, System.currentTimeMillis(), 0);
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 	
 	public String getShortId() {
