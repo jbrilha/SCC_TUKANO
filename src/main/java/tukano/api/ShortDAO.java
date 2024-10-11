@@ -1,7 +1,7 @@
 package tukano.api;
 
 /**
- * Represents a User, as stored in the database
+ * Represents a Short, as stored in the database
  */
 public class ShortDAO extends Short {
 	private String _rid;
