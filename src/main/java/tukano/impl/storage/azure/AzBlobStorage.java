@@ -18,9 +18,9 @@ import tukano.impl.storage.BlobStorage;
 public class AzBlobStorage implements BlobStorage {
     private final BlobContainerClient containerClient;
 
-    private static final String BLOBS_CONTAINER_NAME = "images";
+    private static final String BLOBS_CONTAINER_NAME = "shorts";
     private static final String storageConnectionString =
-        System.getenv("CONN_STR");
+        System.getenv("BlobStoreConnection");
 
     public AzBlobStorage() {
         this.containerClient = new BlobContainerClientBuilder()

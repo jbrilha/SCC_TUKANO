@@ -9,8 +9,8 @@ import tukano.api.Result.ErrorCode;
 import utils.JSON;
 
 public class RedisCache /* implements Cache */ {
-    private static final String RedisHostname = System.getenv("REDIS_HOST");
-    private static final String RedisKey = System.getenv("REDIS_PK");
+    private static final String RedisHostname = System.getenv("REDIS_URL");
+    private static final String RedisKey = System.getenv("REDIS_KEY");
     private static final int REDIS_PORT = 6380;
     private static final int REDIS_TIMEOUT = 1000;
     private static final boolean Redis_USE_TLS = true;
