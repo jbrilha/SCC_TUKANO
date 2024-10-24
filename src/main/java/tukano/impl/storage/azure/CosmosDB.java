@@ -19,9 +19,9 @@ import tukano.api.User;
 import tukano.api.Short;
 
 public class CosmosDB {
-    private static final String CONNECTION_URL = System.getenv("COSMOSDB_URL");
-    private static final String DB_KEY = System.getenv("COSMOSDB_KEY");
-    private static final String DB_NAME = System.getenv("COSMOSDB_DATABASE");
+    private static final String CONNECTION_URL = System.getProperty("COSMOSDB_URL");
+    private static final String DB_KEY = System.getProperty("COSMOSDB_KEY");
+    private static final String DB_NAME = System.getProperty("COSMOSDB_DATABASE");
     private static final String USERS_CONTAINER = "users";
     private static final String SHORTS_CONTAINER = "shorts";
 
