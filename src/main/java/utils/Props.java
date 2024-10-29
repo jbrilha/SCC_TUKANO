@@ -19,7 +19,7 @@ public class Props {
 
     public static void load(String resourceFile) {
 
-        System.out.println("\n\n\nFUCKING PROPS AAAAAAAAAA\n\n\n");
+        System.out.println("\n\n\nPROPS:\n");
         try (var in = Props.class.getClassLoader().getResourceAsStream(
                 resourceFile)) {
             var reader = new InputStreamReader(in);
@@ -30,6 +30,7 @@ public class Props {
                 System.setProperty(k.toString(), v.toString());
             });
             System.getenv().forEach(System::setProperty);
+        System.out.println("\n\n\n");
         } catch (Exception x) {
             System.out.println("\n\n\nFUCKING PROPS UUUUUUUUUU\n\n\n");
             x.printStackTrace();

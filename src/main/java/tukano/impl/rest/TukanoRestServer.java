@@ -1,16 +1,15 @@
 package tukano.impl.rest;
 
-import jakarta.ws.rs.core.Application;
-import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
-import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
-import org.glassfish.jersey.server.ResourceConfig;
-import tukano.impl.Token;
-import utils.Args;
+
+import jakarta.ws.rs.core.Application;
 import utils.IP;
+
 import utils.Props;
 
-public class TukanoRestServer {
+public class TukanoRestServer extends Application {
 
     final private static Logger Log =
         Logger.getLogger(TukanoRestServer.class.getName());
@@ -21,37 +20,55 @@ public class TukanoRestServer {
     public static final int PORT = 8080;
 
     public static String serverURI;
+    private Set<Object> singletons = new HashSet<>();
+    private Set<Class<?>> resources = new HashSet<>();
 
     static {
         System.setProperty("java.util.logging.SimpleFormatter.format",
                            "%4$s: %5$s");
     }
 
-    protected TukanoRestServer() {
+    public TukanoRestServer() {
         serverURI = String.format(SERVER_BASE_URI, IP.hostname(), PORT);
+
+        resources.add(RestBlobsResource.class); // could be a singleton? Kevin said so
+        resources.add(RestUsersResource.class);
+        resources.add(RestShortsResource.class);
+
+        Props.load("azurekeys-northeurope.props");
     }
 
-    protected void start() throws Exception {
+    // protected void start() throws Exception {
+    //
+    //     ResourceConfig config = new ResourceConfig();
+    //
+    //     config.register(RestBlobsResource.class);
+    //     config.register(RestUsersResource.class);
+    //     config.register(RestShortsResource.class);
+    //
+    //     JdkHttpServerFactory.createHttpServer(
+    //         URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
+    //
+    //     Log.info(String.format("Tukano Server ready @ %s\n", serverURI));
+    // }
 
-        ResourceConfig config = new ResourceConfig();
+    @Override
+    public Set<Class<?>> getClasses() {
+        return resources;
+    }
 
-        config.register(RestBlobsResource.class);
-        config.register(RestUsersResource.class);
-        config.register(RestShortsResource.class);
-
-        JdkHttpServerFactory.createHttpServer(
-            URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
-
-        Log.info(String.format("Tukano Server ready @ %s\n", serverURI));
+    @Override
+    public Set<Object> getSingletons() {
+        return singletons;
     }
 
     public static void main(String[] args) throws Exception {
-        Args.use(args);
-
-        Token.setSecret( Args.valueOf("-secret", ""));
-        Props.load("azurekeys-northeurope.props");
-
-        new TukanoRestServer().start();
+        // Args.use(args);
+        //
+        // Token.setSecret( Args.valueOf("-secret", ""));
+        // // Props.load( Args.valueOf("-props", "").split(","));
+        //
+        // new TukanoRestServer().start();
 
         return;
     }

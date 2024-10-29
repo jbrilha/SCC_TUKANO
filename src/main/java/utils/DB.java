@@ -66,7 +66,14 @@ public class DB {
         if (key != null)
             RedisCache.insertOne(key, obj);
 
-        return Result.errorOrValue(CosmosDB.getInstance().insertOne(obj), obj);
+        System.out.println("\n\nafter cache\n\n");
+        var res = CosmosDB.getInstance().insertOne(obj);
+        if (res.isOK()) {
+            System.out.println("res is ok\n");
+        } else {
+            System.out.println("res is not ok\n");
+        }
+        return Result.errorOrValue(res, obj);
         // return Result.errorOrValue(Hibernate.getInstance().persistOne(obj), obj);
     }
 

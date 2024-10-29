@@ -34,8 +34,8 @@ public class CosmosDB {
         CosmosClient client = new CosmosClientBuilder()
                 .endpoint(CONNECTION_URL)
                 .key(DB_KEY)
-                .directMode() // DOES NOT work on eduroam TODO replace for final submission
-                // .gatewayMode()
+                // .directMode()
+                .gatewayMode()
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .connectionSharingAcrossClientsEnabled(true)
                 .contentResponseOnWriteEnabled(true)
@@ -57,6 +57,9 @@ public class CosmosDB {
         if (db != null)
             return;
         db = client.getDatabase(DB_NAME);
+        if (db == null) {
+            System.out.println("\n\nkys\n\n");
+        }
         // container = db.getContainer(CONTAINER);
     }
 
@@ -77,7 +80,9 @@ public class CosmosDB {
     }
 
     public <T> Result<T> insertOne(T obj) {
-        return tryCatch(() -> getContainer(obj).createItem(obj).getItem());
+        var container = getContainer(obj);
+        System.out.println("\n\n CONTAINER: " + container.getId());
+        return tryCatch(() -> container.createItem(obj).getItem());
     }
 
     public <T> Result<List<T>> query(Class<T> clazz, String queryStr) {
@@ -101,21 +106,28 @@ public class CosmosDB {
     }
 
     private <T> CosmosContainer getContainer(T obj) {
+        System.out.println("\nGETTING CONTAINER\n");
         // TODO do we prefer this instead of overloading the method?
         if (obj instanceof User || obj.equals(User.class)) {
             // avoids redundant calls
             if (container != null && container.getId().equals(USERS_CONTAINER)) {
+            System.out.println("USERS EXISTING");
                 return container;
             }
 
+            System.out.println("USERS NEW B4");
             container = db.getContainer(USERS_CONTAINER);
+            System.out.println("USERS NEW AFTER");
+            System.out.println();
             return container;
-        } else /* if (obj instanceof Short || obj.equals(Short.class)) */ {
+        } else if (obj instanceof Short || obj.equals(Short.class)) {
             if (container != null && container.getId().equals(SHORTS_CONTAINER)) {
                 return container;
             }
             container = db.getContainer(SHORTS_CONTAINER);
             return container;
+        } else {
+            throw new RuntimeException("\n\nGET CONTAINER EXCEPTION\n\n");
         }
 
         // System.out.println("\n\nUnexpected class in CosmosDB: " + obj.getClass());
