@@ -1,3 +1,4 @@
+# name this file azurekeys-northeurope.props
 BlobStoreConnection=
 COSMOSDB_KEY=
 COSMOSDB_URL=
