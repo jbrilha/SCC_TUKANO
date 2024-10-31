@@ -31,6 +31,8 @@ function uploadRandomizedUser(requestParams, context, ee, next) {
     let pword = randomPassword(15);
     let email = username + "@campus.fct.unl.pt";
     let displayName = username.toUpperCase();
+
+    context.vars.randomPwd = pword;
     
     const user = {
         id: username,
@@ -51,7 +53,13 @@ function processRegisterReply(requestParams, response, context, ee, next) {
     return next();
 }
 
+function captureUserResponse(requestParams, response, context, ee, next) {
+    context.vars.userId = response.body;
+    return next();
+}
+
 module.exports = {
     uploadRandomizedUser,
-    processRegisterReply
+    processRegisterReply,
+    captureUserResponse
 };
