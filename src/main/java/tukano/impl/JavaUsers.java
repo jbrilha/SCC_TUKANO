@@ -37,8 +37,6 @@ public class JavaUsers implements Users {
         if (badUserInfo(user))
             return error(BAD_REQUEST);
 
-        System.out.println("\n\nCREATE USER:");
-        System.out.println(user.toString() + "\n\n");
         return errorOrValue(DB.insertOne(user), user.getUserId());
     }
 

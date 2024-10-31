@@ -5,7 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="users")
+@Table(name = "users")
 public class User {
 	
 	@Id
@@ -20,13 +20,13 @@ public class User {
 	public User(String userId, String pwd, String email, String displayName) {
 		this.pwd = pwd;
 		this.email = email;
-		this.userId = userId;
 		this.id = userId;
+		this.userId = userId;
 		this.displayName = displayName;
 	}
 
 	public String getId() {
-		return id;
+		return this.id;
 	}
 	public void setId(String id) {
 		this.id = id;
@@ -78,7 +78,7 @@ public class User {
 	
 	@Override
 	public String toString() {
-		return "User [id=" + id + ", userId=" + userId + ", pwd=" + pwd + ", email=" + email + ", displayName=" + displayName + "]";
+		return "User [id= " + id + ", userId=" + userId + ", pwd=" + pwd + ", email=" + email + ", displayName=" + displayName + "]";
 	}
 	
 	public User copyWithoutPassword() {
