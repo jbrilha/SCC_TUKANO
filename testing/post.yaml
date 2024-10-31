@@ -26,7 +26,6 @@ scenarios:
             Content-Type: application/json
         json:
             id: "{{ userId }}" # this parameter is filled from the fields above
-            userId: "{{ userId }}"
             pwd: "{{ pwd }}"
             email: "{{ email }}"
             displayName: "{{ displayName }}"
