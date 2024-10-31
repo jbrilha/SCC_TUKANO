@@ -27,14 +27,20 @@ public class Hibernate {
 
     private Hibernate() {
         try {
-            Configuration config = new Configuration()
-                                 .configure(new File(HIBERNATE_CFG_FILE));
+            //Configuration config = new Configuration().configure(new File(HIBERNATE_CFG_FILE));
+            Configuration config = new Configuration().configure();
 
             // I prefer this over figuring out env variables in the XML
             final String POSTGRES_URL = System.getProperty("POSTGRES_URL");
+            final String POSTGRES_USER = System.getProperty("POSTGRES_USER");
+            final String POSTGRES_PASSWORD = System.getProperty("POSTGRES_PASSWORD");
+            config.setProperty("hibernate.connection.driver_class", "org.postgresql.Driver");
             config.setProperty("hibernate.connection.url", POSTGRES_URL);
+            config.setProperty("hibernate.connection.username", POSTGRES_USER);
+            config.setProperty("hibernate.connection.password", POSTGRES_PASSWORD);
+            config.setProperty("hibernate.show_sql", "true");
 
-            this. sessionFactory = config.buildSessionFactory();
+            this.sessionFactory = config.buildSessionFactory();
 
         } catch (Exception e) {
             e.printStackTrace();
