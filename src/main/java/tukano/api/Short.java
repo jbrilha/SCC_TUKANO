@@ -15,7 +15,7 @@ import tukano.impl.Token;
  *
  */
 @Entity
-@Table(name = "shorts")
+@Table(name = "Shorts")
 public class Short {
 	
 	@Id

@@ -34,7 +34,6 @@ function uploadRandomizedUser(requestParams, context, ee, next) {
     
     const user = {
         id: username,
-        userId: username,
         pwd: pword,
         email: email,
         displayName: displayName

@@ -5,12 +5,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "users")
+@Table(name = "Users")
 public class User {
 	
 	@Id
 	private String id; // TODO explain why this is here for CosmosDB
-	private String userId;
 	private String pwd;
 	private String email;	
 	private String displayName;
@@ -21,7 +20,6 @@ public class User {
 		this.pwd = pwd;
 		this.email = email;
 		this.id = userId;
-		this.userId = userId;
 		this.displayName = displayName;
 	}
 
@@ -32,10 +30,10 @@ public class User {
 		this.id = id;
 	}
 	public String getUserId() {
-		return userId;
+		return id;
 	}
 	public void setUserId(String userId) {
-		this.userId = userId;
+		this.id = userId;
 	}
 	public String getPwd() {
 		return pwd;
@@ -61,7 +59,7 @@ public class User {
 	}
 	
 	public String userId() {
-		return userId;
+		return id;
 	}
 	
 	public String pwd() {
@@ -78,15 +76,15 @@ public class User {
 	
 	@Override
 	public String toString() {
-		return "User [id= " + id + ", userId=" + userId + ", pwd=" + pwd + ", email=" + email + ", displayName=" + displayName + "]";
+		return "User [id=" + id + ", pwd=" + pwd + ", email=" + email + ", displayName=" + displayName + "]";
 	}
 	
 	public User copyWithoutPassword() {
-		return new User(userId, "", email, displayName);
+		return new User(id, "", email, displayName);
 	}
 	
 	public User updateFrom( User other ) {
-		return new User( userId, 
+		return new User( id, 
 				other.pwd != null ? other.pwd : pwd,
 				other.email != null ? other.email : email, 
 				other.displayName != null ? other.displayName : displayName);
