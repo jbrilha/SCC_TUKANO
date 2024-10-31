@@ -90,7 +90,7 @@ public class JavaShorts implements Shorts {
 	public Result<List<String>> getShorts(String userId) {
 		Log.info(() -> format("getShorts : userId = %s\n", userId));
 
-		var query = format("SELECT s.shortId FROM Short s WHERE s.ownerId = '%s'", userId);
+		var query = format("SELECT s.shortId FROM shorts s WHERE s.ownerId = '%s'", userId);
 		return errorOrValue( okUser(userId), DB.sql( query, String.class));
 	}
 
@@ -141,9 +141,9 @@ public class JavaShorts implements Shorts {
 		Log.info(() -> format("getFeed : userId = %s, pwd = %s\n", userId, password));
 
 		final var QUERY_FMT = """
-				SELECT s.shortId, s.timestamp FROM Short s WHERE	s.ownerId = '%s'				
+				SELECT s.shortId, s.timestamp FROM shorts s WHERE	s.ownerId = '%s'				
 				UNION			
-				SELECT s.shortId, s.timestamp FROM Short s, Following f 
+				SELECT s.shortId, s.timestamp FROM shorts s, Following f 
 					WHERE 
 						f.followee = s.ownerId AND f.follower = '%s' 
 				ORDER BY s.timestamp DESC""";
