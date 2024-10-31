@@ -90,24 +90,6 @@
                     </deployment>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>com.microsoft.azure</groupId>
-                <artifactId>azure-webapp-maven-plugin</artifactId>
-                <version>2.12.0</version>
-                <configuration>
-                    <runtime/>
-                    <deployment>
-                        <resources>
-                            <resource>
-                                <directory>/Users/joaobrilha/Library/CloudStorage/OneDrive-FCTNOVA/UNI/MEI/YEAR_1/SEM_1/SCC/proj/tukano/target</directory>
-                                <includes>
-                                    <include>*.jar</include>
-                                </includes>
-                            </resource>
-                        </resources>
-                    </deployment>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
     <dependencies>
