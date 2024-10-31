@@ -37,8 +37,8 @@ public class DB {
         }
 
         System.out.println("Cache miss: " + key);
-        return CosmosDB.getInstance().getOne(id, clazz);
-        // return Hibernate.getInstance().getOne(id, clazz);
+        // return CosmosDB.getInstance().getOne(id, clazz);
+        return Hibernate.getInstance().getOne(id, clazz);
     }
 
     public static <T> Result<T> deleteOne(T obj) {
@@ -46,8 +46,8 @@ public class DB {
         if (key != null)
             RedisCache.invalidate(key);
 
-        return Result.errorOrValue(CosmosDB.getInstance().deleteOne(obj), obj);
-        // return Hibernate.getInstance().deleteOne(obj);
+        // return Result.errorOrValue(CosmosDB.getInstance().deleteOne(obj), obj);
+        return Hibernate.getInstance().deleteOne(obj);
     }
 
     public static <T> Result<T> updateOne(T obj) {
@@ -55,8 +55,8 @@ public class DB {
         if (key != null)
             RedisCache.invalidate(key);
 
-        return CosmosDB.getInstance().updateOne(obj);
-        // return Hibernate.getInstance().updateOne(obj);
+        // return CosmosDB.getInstance().updateOne(obj);
+        return Hibernate.getInstance().updateOne(obj);
     }
 
     public static <T> Result<T> insertOne(T obj) {
@@ -66,8 +66,8 @@ public class DB {
         if (key != null)
             RedisCache.insertOne(key, obj);
 
-        return Result.errorOrValue(CosmosDB.getInstance().insertOne(obj), obj);
-        // return Result.errorOrValue(Hibernate.getInstance().persistOne(obj), obj);
+        // return Result.errorOrValue(CosmosDB.getInstance().insertOne(obj), obj);
+        return Result.errorOrValue(Hibernate.getInstance().persistOne(obj), obj);
     }
 
     public static <T> Result<T> transaction(Consumer<Session> c) {

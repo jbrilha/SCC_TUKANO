@@ -1,56 +1,75 @@
 package tukano.impl.rest;
 
-import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 
-import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
-import org.glassfish.jersey.server.ResourceConfig;
-
-import tukano.impl.Token;
-import utils.Args;
+import jakarta.ws.rs.core.Application;
 import utils.IP;
+
 import utils.Props;
 
+public class TukanoRestServer extends Application {
 
-public class TukanoRestServer {
-	final private static Logger Log = Logger.getLogger(TukanoRestServer.class.getName());
+    final private static Logger Log =
+        Logger.getLogger(TukanoRestServer.class.getName());
 
-	static final String INETADDR_ANY = "0.0.0.0";
-	static String SERVER_BASE_URI = "http://%s:%s/rest";
+    static final String INETADDR_ANY = "0.0.0.0";
+    static String SERVER_BASE_URI = "http://%s:%s/rest";
 
-	public static final int PORT = 8080;
+    public static final int PORT = 8080;
 
-	public static String serverURI;
-			
-	static {
-		System.setProperty("java.util.logging.SimpleFormatter.format", "%4$s: %5$s");
-	}
-	
-	protected TukanoRestServer() {
-		serverURI = String.format(SERVER_BASE_URI, IP.hostname(), PORT);
-	}
+    public static String serverURI;
+    private Set<Object> singletons = new HashSet<>();
+    private Set<Class<?>> resources = new HashSet<>();
 
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                           "%4$s: %5$s");
+    }
 
-	protected void start() throws Exception {
-	
-		ResourceConfig config = new ResourceConfig();
-		
-		config.register(RestBlobsResource.class);
-		config.register(RestUsersResource.class); 
-		config.register(RestShortsResource.class);
-		
-		JdkHttpServerFactory.createHttpServer( URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
-		
-		Log.info(String.format("Tukano Server ready @ %s\n",  serverURI));
-	}
-	
-	
-	public static void main(String[] args) throws Exception {
-		Args.use(args);
-		
-		Token.setSecret( Args.valueOf("-secret", ""));
-//		Props.load( Args.valueOf("-props", "").split(","));
-		
-		new TukanoRestServer().start();
-	}
+    public TukanoRestServer() {
+        serverURI = String.format(SERVER_BASE_URI, IP.hostname(), PORT);
+
+        resources.add(RestBlobsResource.class); // could be a singleton? Kevin said so
+        resources.add(RestUsersResource.class);
+        resources.add(RestShortsResource.class);
+
+        Props.load("azurekeys-northeurope.props");
+    }
+
+    // protected void start() throws Exception {
+    //
+    //     ResourceConfig config = new ResourceConfig();
+    //
+    //     config.register(RestBlobsResource.class);
+    //     config.register(RestUsersResource.class);
+    //     config.register(RestShortsResource.class);
+    //
+    //     JdkHttpServerFactory.createHttpServer(
+    //         URI.create(serverURI.replace(IP.hostname(), INETADDR_ANY)), config);
+    //
+    //     Log.info(String.format("Tukano Server ready @ %s\n", serverURI));
+    // }
+
+    @Override
+    public Set<Class<?>> getClasses() {
+        return resources;
+    }
+
+    @Override
+    public Set<Object> getSingletons() {
+        return singletons;
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Args.use(args);
+        //
+        // Token.setSecret( Args.valueOf("-secret", ""));
+        // // Props.load( Args.valueOf("-props", "").split(","));
+        //
+        // new TukanoRestServer().start();
+
+        return;
+    }
 }
