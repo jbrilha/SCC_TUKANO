@@ -4,3 +4,4 @@ target/
 .idea/
 tukano.iml
 .env
+azurekeys-northeurope.props

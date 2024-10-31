@@ -7,11 +7,6 @@ import static tukano.api.Result.ErrorCode.FORBIDDEN;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
-import com.azure.core.util.BinaryData;
-import com.azure.storage.blob.BlobClient;
-import com.azure.storage.blob.BlobContainerClient;
-import com.azure.storage.blob.BlobContainerClientBuilder;
-
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.impl.rest.TukanoRestServer;
@@ -22,9 +17,6 @@ import utils.Hex;
 import tukano.impl.storage.azure.AzBlobStorage;
 
 public class JavaBlobs implements Blobs {
-    private static final String BLOBS_CONTAINER_NAME = "images";
-    String storageConnectionString = System.getenv("CONN_STR");
-
     private static Blobs instance;
     private static Logger Log = Logger.getLogger(JavaBlobs.class.getName());
 
