@@ -1,6 +1,8 @@
 package utils;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -27,14 +29,13 @@ public class Hibernate {
 
     private Hibernate() {
         try {
-            Configuration config = new Configuration()
-                                 .configure(new File(HIBERNATE_CFG_FILE));
+            Configuration config =
+                new Configuration().configure();
 
             // I prefer this over figuring out env variables in the XML
-            final String POSTGRES_URL = System.getProperty("POSTGRES_URL");
-            config.setProperty("hibernate.connection.url", POSTGRES_URL);
+            config = config.setProperty("hibernate.connection.url", System.getProperty("POSTGRES_URL"));
 
-            this. sessionFactory = config.buildSessionFactory();
+            this.sessionFactory = config.buildSessionFactory();
 
         } catch (Exception e) {
             e.printStackTrace();
