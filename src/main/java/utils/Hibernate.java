@@ -29,11 +29,15 @@ public class Hibernate {
 
     private Hibernate() {
         try {
-            Configuration config =
-                new Configuration().configure();
+            Configuration config = new Configuration().configure();
 
             // I prefer this over figuring out env variables in the XML
-            config = config.setProperty("hibernate.connection.url", System.getProperty("POSTGRES_URL"));
+            config.setProperty("hibernate.connection.url",
+                               System.getProperty("POSTGRES_URL"));
+            config.setProperty("hibernate.connection.username",
+                               System.getProperty("POSTGRES_USERNAME"));
+            config.setProperty("hibernate.connection.password",
+                               System.getProperty("POSTGRES_PASSWORD"));
 
             this.sessionFactory = config.buildSessionFactory();
 
