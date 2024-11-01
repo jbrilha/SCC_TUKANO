@@ -1,12 +1,14 @@
 package tukano.impl.data;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 @Entity
 public class Following{
+    String id; // for Cosmos NoSQL
 
 	@Id 
 	String follower;
@@ -18,6 +20,7 @@ public class Following{
 
 	public Following(String follower, String followee) {
 		super();
+        this.id = UUID.randomUUID().toString();
 		this.follower = follower;
 		this.followee = followee;
 	}
@@ -36,6 +39,14 @@ public class Following{
 
 	public void setFollowee(String followee) {
 		this.followee = followee;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	@Override
@@ -57,7 +68,7 @@ public class Following{
 
 	@Override
 	public String toString() {
-		return "Following [follower=" + follower + ", followee=" + followee + "]";
+		return "Following [id=" + id + ", follower=" + follower + ", followee=" + followee + "]";
 	}
 	
 	
