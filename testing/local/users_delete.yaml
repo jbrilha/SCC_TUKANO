@@ -3,7 +3,7 @@ config:
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
-    - name: get
+    - name: delete
       duration: 1
       # arrivalRate: 2
       arrivalCount: 6
@@ -21,13 +21,13 @@ config:
       - "displayName"
 
 scenarios:
-- name: "Get users from .csv"
+- name: "Delete user"
   flow:
-    - get:
-        url: /users/{{ userId}}
+    - delete:
+        url: /users/{{ userId }}
         qs:
-          pwd: "{{ pwd }}"
+            pwd: "{{ pwd }}"
         capture:
           - json: "$"
             as: "user"
-    - log: "getUser: {{ user }}"
+    - log: "deleteUser: {{ user }}"

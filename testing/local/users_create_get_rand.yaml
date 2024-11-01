@@ -25,7 +25,13 @@ scenarios:
           capture:
             - regexp: "(.+)"
               as: "userId"
+      - log: "createUser: {{ userId }}"
+
       - get:
           url: /users/{{ userId }}
           qs:
             pwd: "{{ randomPwd }}" # this is set in uploadRandomizedUser
+          capture:
+            - json: "$"
+              as: "user"
+      - log: "getUser: {{ user }}"

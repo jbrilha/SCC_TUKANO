@@ -3,7 +3,7 @@ config:
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
-    - name: post
+    - name: update
       duration: 1
       # arrivalRate: 2
       arrivalCount: 6
@@ -32,16 +32,27 @@ scenarios:
             pwd: "{{ pwd }}"
             email: "{{ email }}"
             displayName: "{{ displayName }}"
-        capture:
-          - regexp: "(.+)"
-            as: "userId"
-    - log: "createUser: {{ userId }}"
-
     - get:
         url: /users/{{ userId }}
         qs:
           pwd: "{{ pwd }}"
         capture:
           - json: "$"
-            as: "gottenUser"
-    - log: "getUser: {{ gottenUser }}"
+            as: "createdUser"
+    - log: "Created user: {{ createdUser }}"
+    - put:
+        url: /users/{{ userId }}
+        headers:
+            Content-Type: application/json
+        qs:
+          pwd: "{{ pwd }}"
+        json:
+            id: "{{ userId }}" # this parameter is filled from the fields above
+            pwd: "{{ pwd }}"
+            email: "new{{ email }}"
+            displayName: "NEW{{ displayName }}"
+        capture:
+          - json: "$"
+            as: "updatedUser"
+    - log: "Updated user: {{ updatedUser }}"
+        
