@@ -20,7 +20,7 @@ public class AzBlobStorage implements BlobStorage {
 
     private static final String BLOBS_CONTAINER_NAME = "shorts";
     private static final String storageConnectionString =
-        System.getenv("BlobStoreConnection");
+        System.getProperty("BlobStoreConnection");
 
     public AzBlobStorage() {
         this.containerClient = new BlobContainerClientBuilder()
