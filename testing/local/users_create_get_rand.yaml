@@ -2,7 +2,7 @@ config:
   target: http://127.0.0.1:8080/tukano/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
-  processor: ./test-utils.js
+  processor: ../test-utils.js
   phases:
     - name: "Warm up" # WARM UP PHASE: duration: 10s, starting with 1 new client/sec up to 5 new clients/sec
       duration: 10
@@ -22,4 +22,16 @@ scenarios:
             Content-Type: application/json
             Accept: application/json
           beforeRequest: "uploadRandomizedUser"
-          afterResponse: "processRegisterReply"
+          capture:
+            - regexp: "(.+)"
+              as: "userId"
+      - log: "createUser: {{ userId }}"
+
+      - get:
+          url: /users/{{ userId }}
+          qs:
+            pwd: "{{ randomPwd }}" # this is set in uploadRandomizedUser
+          capture:
+            - json: "$"
+              as: "user"
+      - log: "getUser: {{ user }}"

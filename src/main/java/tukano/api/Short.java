@@ -15,12 +15,11 @@ import tukano.impl.Token;
  *
  */
 @Entity
-@Table(name = "shorts")
+@Table(name = "Shorts")
 public class Short {
 	
 	@Id
 	private String id; // TODO explain why this is here for CosmosDB
-	String shortId;
 	String ownerId;
 	String blobUrl;
 	long timestamp;
@@ -31,7 +30,6 @@ public class Short {
 	public Short(String shortId, String ownerId, String blobUrl, long timestamp, int totalLikes) {
 		super();
 		this.id = shortId;
-		this.shortId = shortId;
 		this.ownerId = ownerId;
 		this.blobUrl = blobUrl;
 		this.timestamp = timestamp;
@@ -51,11 +49,11 @@ public class Short {
 	}
 	
 	public String getShortId() {
-		return shortId;
+		return id;
 	}
 
 	public void setShortId(String shortId) {
-		this.shortId = shortId;
+		this.id = shortId;
 	}
 
 	public String getOwnerId() {
@@ -92,12 +90,12 @@ public class Short {
 
 	@Override
 	public String toString() {
-		return "Short [shortId=" + shortId + ", ownerId=" + ownerId + ", blobUrl=" + blobUrl + ", timestamp="
+		return "Short [id=" + id + ", ownerId=" + ownerId + ", blobUrl=" + blobUrl + ", timestamp="
 				+ timestamp + ", totalLikes=" + totalLikes + "]";
 	}
 	
 	public Short copyWithLikes_And_Token( long totLikes) {
 		var urlWithToken = String.format("%s?token=%s", blobUrl, Token.get(blobUrl));
-		return new Short( shortId, ownerId, urlWithToken, timestamp, (int)totLikes);
+		return new Short( id, ownerId, urlWithToken, timestamp, (int)totLikes);
 	}	
 }

@@ -1,5 +1,7 @@
 package utils;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -13,14 +15,35 @@ import tukano.impl.storage.azure.CosmosDB;
 
 public class DB {
 
-    private static final boolean useHibernate = true; // TODO for testing purposes
+    // TODO for testing purposes
+    public static final boolean usingHibernate = false;
 
-    public static <T> List<T> sql(String query, Class<T> clazz) {
-        return Hibernate.getInstance().sql(query, clazz);
+    public static <T> List<T> sql(String containerName, String query, Class<T> clazz) {
+        if (usingHibernate) {
+            return Hibernate.getInstance().sql(query, clazz);
+        }
+
+        var res = CosmosDB.getInstance().query(containerName, query, clazz);
+        if (res.isOK()) {
+            return res.value();
+        }
+
+        // TODO is this bad?
+        return Collections.emptyList();
     }
 
-    public static <T> List<T> sql(Class<T> clazz, String fmt, Object... args) {
-        return Hibernate.getInstance().sql(String.format(fmt, args), clazz);
+    public static <T> List<T> sql(String containerName, Class<T> clazz, String fmt, Object... args) {
+        if (usingHibernate) {
+            return Hibernate.getInstance().sql(String.format(fmt, args), clazz);
+        }
+
+        var res = CosmosDB.getInstance().query(containerName, String.format(fmt, args), clazz);
+        if (res.isOK()) {
+            return res.value();
+        }
+
+        // TODO is this bad?
+        return Collections.emptyList();
     }
 
     public static <T> Result<T> getOne(String id, Class<T> clazz) {
@@ -39,7 +62,7 @@ public class DB {
 
         System.out.println("Cache miss: " + key);
 
-        if (useHibernate) {
+        if (usingHibernate) {
             return Hibernate.getInstance().getOne(id, clazz);
         }
         return CosmosDB.getInstance().getOne(id, clazz);
@@ -50,9 +73,10 @@ public class DB {
         if (key != null)
             RedisCache.invalidate(key);
 
-        if (useHibernate) {
+        if (usingHibernate) {
             return Hibernate.getInstance().deleteOne(obj);
         }
+        // TODO maybe this should be errorOrResult
         return Result.errorOrValue(CosmosDB.getInstance().deleteOne(obj), obj);
     }
 
@@ -61,7 +85,7 @@ public class DB {
         if (key != null)
             RedisCache.invalidate(key);
 
-        if (useHibernate) {
+        if (usingHibernate) {
             return Hibernate.getInstance().updateOne(obj);
         }
         return CosmosDB.getInstance().updateOne(obj);
@@ -74,7 +98,7 @@ public class DB {
         if (key != null)
             RedisCache.insertOne(key, obj);
 
-        if (useHibernate) {
+        if (usingHibernate) {
             return Result.errorOrValue(Hibernate.getInstance().persistOne(obj),
                                        obj);
         }

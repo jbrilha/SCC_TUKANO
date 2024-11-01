@@ -10,6 +10,7 @@ import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import tukano.api.Result;
 import tukano.api.Result.*;
@@ -22,8 +23,17 @@ public class CosmosDB {
     private static final String DB_KEY = System.getProperty("COSMOSDB_KEY");
     private static final String DB_NAME =
         System.getProperty("COSMOSDB_DATABASE");
-    private static final String USERS_CONTAINER = "users";
-    private static final String SHORTS_CONTAINER = "shorts";
+    public static final String USERS_CONTAINER = "users";
+    public static final String SHORTS_CONTAINER = "shorts";
+    public static final String LIKES_CONTAINER = "likes";
+    public static final String FOLLOWING_CONTAINER = "following";
+
+    private static final Map<String, String> containerMap = Map.of(
+        "User", USERS_CONTAINER,
+        "Short", SHORTS_CONTAINER,
+        "Following", FOLLOWING_CONTAINER,
+        "Likes", LIKES_CONTAINER
+    );
 
     private static CosmosDB instance;
 
@@ -54,7 +64,7 @@ public class CosmosDB {
         if (db != null)
             return;
         db = client.getDatabase(DB_NAME);
-        // container = db.getContainer(CONTAINER);
+        container = db.getContainer(USERS_CONTAINER);
     }
 
     public void close() { client.close(); }
@@ -82,9 +92,9 @@ public class CosmosDB {
         return tryCatch(() -> getContainer(obj).createItem(obj).getItem());
     }
 
-    public <T> Result<List<T>> query(Class<T> clazz, String queryStr) {
+    public <T> Result<List<T>> query(String containerName, String queryStr, Class<T> clazz) {
         return tryCatch(() -> {
-            var res = getContainer(clazz).queryItems(
+            var res = getContainer(containerName).queryItems(
                 queryStr, new CosmosQueryRequestOptions(), clazz);
             return res.stream().toList();
         });
@@ -96,7 +106,7 @@ public class CosmosDB {
             return Result.ok(supplierFunc.get());
         } catch (CosmosException ce) {
             System.out.println("\n\nCosmos Exception:");
-            // ce.printStackTrace();
+            ce.printStackTrace();
             return Result.error(errorCodeFromStatus(ce.getStatusCode()));
         } catch (Exception x) {
             x.printStackTrace();
@@ -105,47 +115,39 @@ public class CosmosDB {
     }
 
     private <T> CosmosContainer getContainer(T obj) {
-        if(db == null) init();
+        if (db == null)
+            init();
 
-        // TODO do we prefer this instead of overloading the method?
-        if (obj instanceof User || obj.equals(User.class)) {
-            // avoids redundant calls
-            if (container != null &&
-                container.getId().equals(USERS_CONTAINER)) {
-                return container;
-            }
-
-            container = db.getContainer(USERS_CONTAINER);
-            return container;
-        } else if (obj instanceof Short || obj.equals(Short.class)) {
-            if (container != null &&
-                container.getId().equals(SHORTS_CONTAINER)) {
-                return container;
-            }
-            container = db.getContainer(SHORTS_CONTAINER);
-            return container;
+        String containerName = "";
+        if(obj instanceof Class clazz) {
+            System.out.println("'tis a class: " + clazz);
+            containerName = containerMap.get(clazz.getSimpleName());
         } else {
-            throw new RuntimeException("\n\nGET CONTAINER EXCEPTION\n\n");
+            System.out.println("'tis an object: " + obj.getClass().getSimpleName());
+            containerName = containerMap.get(obj.getClass().getSimpleName());
         }
 
-        // System.out.println("\n\nUnexpected class in CosmosDB: " +
-        // obj.getClass()); return container;
+        if (container != null &&
+            container.getId().equals(containerName)) {
+            return container;
+        }
+
+        container = db.getContainer(containerName);
+        return container;
     }
 
-    // private <T> CosmosContainer getContainer(Class<T> clazz) {
-    // if (clazz.equals(User.class)) {
-    // if(container.getId().equals(USERS_CONTAINER)) {
-    // return container;
-    // }
-    //
-    // return db.getContainer(USERS_CONTAINER);
-    // } else /* if (clazz.equals(Short.class)) */ {
-    // if(container.getId().equals(SHORTS_CONTAINER)) {
-    // return container;
-    // }
-    // return db.getContainer(SHORTS_CONTAINER);
-    // }
-    // }
+    private <T> CosmosContainer getContainer(String containerName) {
+        if (db == null)
+            init();
+
+        if (container != null &&
+            container.getId().equals(containerName)) {
+            return container;
+        }
+
+        container = db.getContainer(containerName);
+        return container;
+    }
 
     static Result.ErrorCode errorCodeFromStatus(int status) {
         return switch (status) {

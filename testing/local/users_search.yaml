@@ -1,0 +1,25 @@
+config:
+  target: http://127.0.0.1:8080/tukano/rest
+  plugins:
+    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  processor: ../test-utils.js
+  phases:
+    - name: search
+      duration: 1
+      # arrivalRate: 2
+      arrivalCount: 1
+
+scenarios:
+  - name: "Search users with query"
+    flow:
+      - get:
+          url: /users
+          count: 1
+          # either this or [ -v  '{"query": "<query>"}' ] when running this test
+          # beforeRequest: "setQuery"
+          qs:
+            query: "{{ query }}"
+          capture:
+            - json: "$"
+              as: "results"
+      - log: "Search: {{ query }}: {{ results }}"

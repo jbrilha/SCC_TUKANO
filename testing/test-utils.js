@@ -1,27 +1,25 @@
 function randomUsername(char_limit) {
     const letters = "abcdefghijklmnopqrstuvwxyz";
-    let username = '';
+    let username = "";
     let num_chars = Math.floor(Math.random() * char_limit);
 
-    for(let i = 0; i < num_chars; i++) {
+    for (let i = 0; i < num_chars; i++) {
         username += letters[Math.floor(Math.random() * letters.length)];
     }
 
     return username;
 }
 
-function randomPassword(pass_len){
+function randomPassword(pass_len) {
     const skip_value = 33;
     const lim_values = 94;
 
-    let password = '';
+    let password = "";
     let num_chars = Math.floor(Math.random() * pass_len);
     for (let i = 0; i < pass_len; i++) {
-        let chosen_char =  Math.floor(Math.random() * lim_values) + skip_value;
-        if (chosen_char == "'" || chosen_char == '"')
-            i -= 1;
-        else
-            password += chosen_char
+        let chosen_char = Math.floor(Math.random() * lim_values) + skip_value;
+        if (chosen_char == "'" || chosen_char == '"') i -= 1;
+        else password += chosen_char;
     }
     return password;
 }
@@ -31,13 +29,14 @@ function uploadRandomizedUser(requestParams, context, ee, next) {
     let pword = randomPassword(15);
     let email = username + "@campus.fct.unl.pt";
     let displayName = username.toUpperCase();
-    
+
+    context.vars.randomPwd = pword;
+
     const user = {
         id: username,
-        userId: username,
         pwd: pword,
         email: email,
-        displayName: displayName
+        displayName: displayName,
     };
     requestParams.body = JSON.stringify(user);
     return next();
@@ -45,14 +44,31 @@ function uploadRandomizedUser(requestParams, context, ee, next) {
 
 registeredUsers = [];
 
-function processRegisterReply(requestParams, response, context, ee, next) {
-    if( typeof response.body !== 'undefined' && response.body.length > 0) {
+function processCreateResponse(requestParams, response, context, ee, next) {
+    if (typeof response.body !== "undefined" && response.body.length > 0) {
         registeredUsers.push(response.body);
     }
     return next();
 }
 
+function setQuery(requestParams, context, ee, next) {
+    let query = "f";
+
+    context.vars.query = query;
+
+    console.log("Set query: " + context.vars.query);
+
+    return next();
+}
+
+function captureUserResponse(requestParams, response, context, ee, next) {
+    context.vars.userId = response.body;
+    return next();
+}
+
 module.exports = {
     uploadRandomizedUser,
-    processRegisterReply
+    processCreateResponse,
+    captureUserResponse,
+    setQuery
 };
