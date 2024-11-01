@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+
 function randomUsername(char_limit) {
     const letters = "abcdefghijklmnopqrstuvwxyz";
     let username = "";
@@ -66,9 +68,37 @@ function captureUserResponse(requestParams, response, context, ee, next) {
     return next();
 }
 
+function getBlobIdFromShort(requestParams, response, context, ee, next) {
+    const short = JSON.parse(response.body);
+
+    const url = new URL(short.blobUrl);
+    // console.log("\nblobUrl: " + url);
+
+    const blobId = url.pathname.split("/").pop();
+    // console.log("blobId: " + blobId);
+
+    const token = url.searchParams.get("token");
+    // console.log("token: " + token);
+
+    context.vars.token = token;
+    context.vars.blobId = blobId;
+
+    return next();
+}
+
+function randomBytes(requestParams, context, ee, next) {
+    const randBytes = crypto.randomBytes(100);
+
+    requestParams.body = randBytes;
+
+    return next();
+}
+
 module.exports = {
+    randomBytes,
     uploadRandomizedUser,
     processCreateResponse,
     captureUserResponse,
-    setQuery
+    getBlobIdFromShort,
+    setQuery,
 };
