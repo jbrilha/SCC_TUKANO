@@ -1,7 +1,6 @@
 package tukano.impl.data;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -20,7 +19,7 @@ public class Following{
 
 	public Following(String follower, String followee) {
 		super();
-        this.id = UUID.randomUUID().toString();
+        this.id = follower + "_" + followee;
 		this.follower = follower;
 		this.followee = followee;
 	}

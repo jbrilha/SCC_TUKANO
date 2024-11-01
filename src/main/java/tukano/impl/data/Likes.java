@@ -1,7 +1,6 @@
 package tukano.impl.data;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -21,7 +20,7 @@ public class Likes {
 	public Likes() {}
 
 	public Likes(String userId, String shortId, String ownerId) {
-        this.id = UUID.randomUUID().toString();
+        this.id = userId + "_" + shortId;
 		this.userId = userId;
 		this.shortId = shortId;
 		this.ownerId = ownerId;
