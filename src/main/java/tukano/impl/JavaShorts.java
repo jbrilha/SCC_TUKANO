@@ -1,10 +1,10 @@
 package tukano.impl;
 
 import static java.lang.String.format;
+import static tukano.api.Result.ErrorCode;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
 import static tukano.api.Result.ErrorCode.NOT_IMPLEMENTED;
-import static tukano.api.Result.ErrorCode;
 import static tukano.api.Result.error;
 import static tukano.api.Result.errorOrResult;
 import static tukano.api.Result.errorOrValue;
@@ -14,11 +14,11 @@ import static utils.DB.getOne;
 import static utils.DB.usingHibernate;
 
 import java.util.ArrayList;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
 import com.azure.cosmos.models.CosmosBatch;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
@@ -77,9 +77,11 @@ public class JavaShorts implements Shorts {
         String query;
         if (DB.usingHibernate) {
             query = format(
-                    "SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
+                "SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
         } else {
-            query = format("SELECT VALUE COUNT(1) FROM Likes l WHERE l.shortId = '%s'", shortId);
+            query = format(
+                "SELECT VALUE COUNT(1) FROM Likes l WHERE l.shortId = '%s'",
+                shortId);
         }
 
         var likes = DB.sql(CosmosDB.LIKES_CONTAINER, query, Long.class);
@@ -99,13 +101,14 @@ public class JavaShorts implements Shorts {
                     return DB.transaction(hibernate -> {
                         hibernate.remove(shrt);
 
+
                         var query = format("DELETE FROM likes WHERE shortId = '%s'",
                                 shortId);
                         hibernate.createNativeQuery(query, Likes.class)
-                                .executeUpdate();
+                            .executeUpdate();
 
                         JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-                                Token.get());
+                                                       Token.get());
                     });
                 } else {
                     // TODO: support transactions...?
@@ -135,32 +138,33 @@ public class JavaShorts implements Shorts {
         });
     }
 
-    /* public Result<Void> deleteShort(String shortId, String password) {
-        Log.info(()
-                     -> format("deleteShort : shortId = %s, pwd = %s\n",
-                               shortId, password));
-
-        return errorOrResult(getShort(shortId), shrt -> {
-            return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-                return DB.transaction(hibernate -> {
-                    hibernate.remove(shrt);
-
-                    var query = format("DELETE FROM likes WHERE shortId = '%s'",
-                                       shortId);
-                    hibernate.createNativeQuery(query, Likes.class)
-                        .executeUpdate();
-
-                    JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-                                                   Token.get());
-                });
-            });
-        });
-    } */
+    /*
+     * public Result<Void> deleteShort(String shortId, String password) {
+     * Log.info(()
+     * -> format("deleteShort : shortId = %s, pwd = %s\n",
+     * shortId, password));
+     *
+     * return errorOrResult(getShort(shortId), shrt -> {
+     * return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
+     * return DB.transaction(hibernate -> {
+     * hibernate.remove(shrt);
+     *
+     * var query = format("DELETE FROM likes WHERE shortId = '%s'",
+     * shortId);
+     * hibernate.createNativeQuery(query, Likes.class)
+     * .executeUpdate();
+     *
+     * JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
+     * Token.get());
+     * });
+     * });
+     * });
+     * }
+     */
 
     @Override
     public Result<List<String>> getShorts(String userId) {
         Log.info(() -> format("getShorts : userId = %s\n", userId));
-
         var query =
                 format("SELECT s.id FROM Shorts s WHERE s.ownerId = '%s'", userId);
 
@@ -257,7 +261,6 @@ public class JavaShorts implements Shorts {
 
         var query = format(
                 "SELECT l.userId FROM Likes l WHERE l.shortId = '%s'", shortId);
-
         if (DB.usingHibernate) {
             return errorOrResult(getShort(shortId), shrt -> {
                 return errorOrValue(okUser(shrt.getOwnerId(), password),
@@ -281,7 +284,7 @@ public class JavaShorts implements Shorts {
                 -> format("getFeed : userId = %s, pwd = %s\n", userId,
                 password));
         final var QUERY_FMT = """
-				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'				
+				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'
 				UNION			
 				SELECT s.id, s.timestamp FROM Shorts s
                     JOIN Following f ON f.followee = s.ownerId
@@ -355,24 +358,30 @@ public class JavaShorts implements Shorts {
         } else {
             var shortsQuery =
                     format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
+          
             DB.sql(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class)
                     .forEach(s -> {
                         CosmosDB.getInstance().deleteOne(s);
                     });
+
             var followingQuery =
                     format("SELECT * FROM Following f WHERE f.follower = '%s' "
                             + "OR f.followee = '%s'", userId, userId);
+          
             DB.sql(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class)
                     .forEach(f -> {
                         CosmosDB.getInstance().deleteOne(f);
                     });
+
             var likesQuery =
                     format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
                             + "OR l.userId = '%s'", userId, userId);
+
             DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class)
                     .forEach(l -> {
                         CosmosDB.getInstance().deleteOne(l);
                     });
+
             // TODO error handling
             return Result.ok();
         }
