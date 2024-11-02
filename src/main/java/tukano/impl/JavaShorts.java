@@ -1,22 +1,19 @@
 package tukano.impl;
 
 import static java.lang.String.format;
-import static tukano.api.Result.ErrorCode;
-import static tukano.api.Result.ErrorCode.BAD_REQUEST;
-import static tukano.api.Result.ErrorCode.FORBIDDEN;
-import static tukano.api.Result.ErrorCode.NOT_IMPLEMENTED;
 import static tukano.api.Result.error;
 import static tukano.api.Result.errorOrResult;
 import static tukano.api.Result.errorOrValue;
 import static tukano.api.Result.errorOrVoid;
 import static tukano.api.Result.ok;
+import static tukano.api.Result.ErrorCode.BAD_REQUEST;
+import static tukano.api.Result.ErrorCode.FORBIDDEN;
 import static utils.DB.getOne;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
+
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.api.Short;
@@ -25,294 +22,170 @@ import tukano.api.User;
 import tukano.impl.data.Following;
 import tukano.impl.data.Likes;
 import tukano.impl.rest.TukanoRestServer;
-import tukano.impl.storage.azure.CosmosDB;
 import utils.DB;
 
 public class JavaShorts implements Shorts {
 
-    private static Logger Log = Logger.getLogger(JavaShorts.class.getName());
+	private static Logger Log = Logger.getLogger(JavaShorts.class.getName());
+	
+	private static Shorts instance;
+	
+	synchronized public static Shorts getInstance() {
+		if( instance == null )
+			instance = new JavaShorts();
+		return instance;
+	}
+	
+	private JavaShorts() {}
+	
+	
+	@Override
+	public Result<Short> createShort(String userId, String password) {
+		Log.info(() -> format("createShort : userId = %s, pwd = %s\n", userId, password));
 
-    private static Shorts instance;
-
-    synchronized public static Shorts getInstance() {
-        if (instance == null)
-            instance = new JavaShorts();
-        return instance;
-    }
-
-    private JavaShorts() {}
-
-    @Override
-    public Result<Short> createShort(String userId, String password) {
-        Log.info(()
-                     -> format("createShort : userId = %s, pwd = %s\n", userId,
-                               password));
-
-        return errorOrResult(okUser(userId, password), user -> {
-            var shortId = format("%s+%s", userId, UUID.randomUUID());
+		return errorOrResult( okUser(userId, password), user -> {
+			
+			var shortId = format("%s+%s", userId, UUID.randomUUID());
             // TODO change to actual az storage URL
-            var blobUrl = format("%s/%s/%s", TukanoRestServer.serverURI,
-                                 Blobs.NAME, shortId);
-            var shrt = new Short(shortId, userId, blobUrl);
+			var blobUrl = format("%s/%s/%s", TukanoRestServer.serverURI, Blobs.NAME, shortId);
+			var shrt = new Short(shortId, userId, blobUrl);
 
-            return errorOrValue(DB.insertOne(shrt),
-                                s -> s.copyWithLikes_And_Token(0));
-        });
-    }
+			return errorOrValue(DB.insertOne(shrt), s -> s.copyWithLikes_And_Token(0));
+		});
+	}
 
-    @Override
-    public Result<Short> getShort(String shortId) {
-        Log.info(() -> format("getShort : shortId = %s\n", shortId));
+	@Override
+	public Result<Short> getShort(String shortId) {
+		Log.info(() -> format("getShort : shortId = %s\n", shortId));
 
-        if (shortId == null)
-            return error(BAD_REQUEST);
+		if( shortId == null )
+			return error(BAD_REQUEST);
 
-        String query;
-        if (DB.usingHibernate) {
-            query = format(
-                "SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
-        } else {
-            query = format(
-                "SELECT VALUE COUNT(1) FROM Likes l WHERE l.shortId = '%s'",
-                shortId);
-        }
+		var query = format("SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
+		var likes = DB.sql(query, Long.class);
+		return errorOrValue( getOne(shortId, Short.class), shrt -> shrt.copyWithLikes_And_Token( likes.get(0)));
+	}
 
-        var likes = DB.sql(CosmosDB.LIKES_CONTAINER, query, Long.class);
-        return errorOrValue(getOne(shortId, Short.class),
-                            shrt -> shrt.copyWithLikes_And_Token(likes.get(0)));
-    }
+	
+	@Override
+	public Result<Void> deleteShort(String shortId, String password) {
+		Log.info(() -> format("deleteShort : shortId = %s, pwd = %s\n", shortId, password));
+		
+		return errorOrResult( getShort(shortId), shrt -> {
+			
+			return errorOrResult( okUser( shrt.getOwnerId(), password), user -> {
+				return DB.transaction( hibernate -> {
 
-    @Override
+					hibernate.remove( shrt);
+					
+					var query = format("DELETE Likes l WHERE l.shortId = '%s'", shortId);
+					hibernate.createNativeQuery( query, Likes.class).executeUpdate();
+					
+					JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get() );
+				});
+			});	
+		});
+	}
 
-    public Result<Void> deleteShort(String shortId, String password) {
-        Log.info(()
-                     -> format("deleteShort : shortId = %s, pwd = %s\n",
-                               shortId, password));
+	@Override
+	public Result<List<String>> getShorts(String userId) {
+		Log.info(() -> format("getShorts : userId = %s\n", userId));
 
-        return errorOrResult(getShort(shortId), shrt -> {
-            return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-                if (DB.usingHibernate) {
-                    return DB.transaction(hibernate -> {
-                        hibernate.remove(shrt);
+		var query = format("SELECT s.shortId FROM Shorts s WHERE s.ownerId = '%s'", userId);
+		return errorOrValue( okUser(userId), DB.sql( query, String.class));
+	}
 
-                        var query = format(
-                            "DELETE FROM likes WHERE shortId = '%s'", shortId);
-                        hibernate.createNativeQuery(query, Likes.class)
-                            .executeUpdate();
+	@Override
+	public Result<Void> follow(String userId1, String userId2, boolean isFollowing, String password) {
+		Log.info(() -> format("follow : userId1 = %s, userId2 = %s, isFollowing = %s, pwd = %s\n", userId1, userId2, isFollowing, password));
+	
+		
+		return errorOrResult( okUser(userId1, password), user -> {
+			var f = new Following(userId1, userId2);
+			return errorOrVoid( okUser( userId2), isFollowing ? DB.insertOne( f ) : DB.deleteOne( f ));	
+		});			
+	}
 
-                        JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-                                                       Token.get());
-                    });
-                } else {
-                    var res = DB.deleteOne(shrt);
-                    if (res.isOK()) {
-                        // batch or trigger func
-                        return Result.ok();
-                    }
-                    return Result.error(res.error());
-                }
-            });
-        });
-    }
+	@Override
+	public Result<List<String>> followers(String userId, String password) {
+		Log.info(() -> format("followers : userId = %s, pwd = %s\n", userId, password));
 
-    /*
-     * public Result<Void> deleteShort(String shortId, String password) {
-     * Log.info(()
-     * -> format("deleteShort : shortId = %s, pwd = %s\n",
-     * shortId, password));
-     *
-     * return errorOrResult(getShort(shortId), shrt -> {
-     * return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-     * return DB.transaction(hibernate -> {
-     * hibernate.remove(shrt);
-     *
-     * var query = format("DELETE FROM likes WHERE shortId = '%s'",
-     * shortId);
-     * hibernate.createNativeQuery(query, Likes.class)
-     * .executeUpdate();
-     *
-     * JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-     * Token.get());
-     * });
-     * });
-     * });
-     * }
-     */
+		var query = format("SELECT f.follower FROM Following f WHERE f.followee = '%s'", userId);		
+		return errorOrValue( okUser(userId, password), DB.sql(query, String.class));
+	}
 
-    @Override
-    public Result<List<String>> getShorts(String userId) {
-        Log.info(() -> format("getShorts : userId = %s\n", userId));
-        var query =
-            format("SELECT s.id FROM Shorts s WHERE s.ownerId = '%s'", userId);
+	@Override
+	public Result<Void> like(String shortId, String userId, boolean isLiked, String password) {
+		Log.info(() -> format("like : shortId = %s, userId = %s, isLiked = %s, pwd = %s\n", shortId, userId, isLiked, password));
 
-        if (DB.usingHibernate) {
-            return errorOrValue(okUser(userId),
-                DB.sql(CosmosDB.SHORTS_CONTAINER, query, String.class));
-        } else {
-            return errorOrValue(okUser(userId),
-                DB.sql(CosmosDB.SHORTS_CONTAINER, query, JsonNode.class)
-                    .stream()
-                    .map(jsonNode -> jsonNode.get("id").asText())
-                    .toList());
-        }
-    }
+		
+		return errorOrResult( getShort(shortId), shrt -> {
+			var l = new Likes(userId, shortId, shrt.getOwnerId());
+			return errorOrVoid( okUser( userId, password), isLiked ? DB.insertOne( l ) : DB.deleteOne( l ));	
+		});
+	}
 
-    @Override
-    public Result<Void> follow(String userId1, String userId2,
-                               boolean isFollowing, String password) {
-        Log.info(()
-                     -> format("follow : userId1 = %s, userId2 = %s, "
-                                   + "isFollowing = %s, pwd = %s\n",
-                               userId1, userId2, isFollowing, password));
+	@Override
+	public Result<List<String>> likes(String shortId, String password) {
+		Log.info(() -> format("likes : shortId = %s, pwd = %s\n", shortId, password));
 
-        return errorOrResult(okUser(userId1, password), user -> {
-            var f = new Following(userId1, userId2);
-            return errorOrVoid(okUser(userId2),
-                               isFollowing ? DB.insertOne(f) : DB.deleteOne(f));
-        });
-    }
+		return errorOrResult( getShort(shortId), shrt -> {
+			
+			var query = format("SELECT l.userId FROM Likes l WHERE l.shortId = '%s'", shortId);					
+			
+			return errorOrValue( okUser( shrt.getOwnerId(), password ), DB.sql(query, String.class));
+		});
+	}
 
-    @Override
-    public Result<List<String>> followers(String userId, String password) {
-        Log.info(()
-                     -> format("followers : userId = %s, pwd = %s\n", userId,
-                               password));
+	@Override
+	public Result<List<String>> getFeed(String userId, String password) {
+		Log.info(() -> format("getFeed : userId = %s, pwd = %s\n", userId, password));
 
-        var query =
-            format("SELECT f.follower FROM Following f WHERE f.followee = '%s'",
-                   userId);
-
-        if (DB.usingHibernate) {
-            return errorOrValue(okUser(userId),
-                DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
-        } else {
-            return errorOrValue(okUser(userId),
-                DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, JsonNode.class)
-                    .stream()
-                    .map(jsonNode -> jsonNode.get("follower").asText())
-                    .toList());
-        }
-    }
-
-    @Override
-    public Result<Void> like(String shortId, String userId, boolean isLiked,
-                             String password) {
-        Log.info(()
-                     -> format("like : shortId = %s, userId = %s, isLiked = "
-                                   + "%s, pwd = %s\n",
-                               shortId, userId, isLiked, password));
-
-        return errorOrResult(getShort(shortId), shrt -> {
-            var l = new Likes(userId, shortId, shrt.getOwnerId());
-            return errorOrVoid(okUser(userId, password),
-                               isLiked ? DB.insertOne(l) : DB.deleteOne(l));
-        });
-    }
-
-    @Override
-    public Result<List<String>> likes(String shortId, String password) {
-        Log.info(()
-                     -> format("likes : shortId = %s, pwd = %s\n", shortId,
-                               password));
-
-        return errorOrResult(getShort(shortId), shrt -> {
-            var query = format(
-                "SELECT l.userId FROM Likes l WHERE l.shortId = '%s'", shortId);
-
-            return errorOrValue(
-                okUser(shrt.getOwnerId(), password),
-                DB.sql(CosmosDB.LIKES_CONTAINER, query, String.class));
-        });
-    }
-
-    @Override
-    // TODO this needs a different "union" when using Cosmos NoSQL
-    public Result<List<String>> getFeed(String userId, String password) {
-        Log.info(()
-                     -> format("getFeed : userId = %s, pwd = %s\n", userId,
-                               password));
-        final var QUERY_FMT = """
-				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'
+		final var QUERY_FMT = """
+				SELECT s.shortId, s.timestamp FROM Shorts s WHERE	s.ownerId = '%s'				
 				UNION			
-				SELECT s.id, s.timestamp FROM Shorts s
-                    JOIN Following f ON f.followee = s.ownerId
-			    	    WHERE f.follower = '%s' 
-				ORDER BY timestamp DESC""";
+				SELECT s.shortId, s.timestamp FROM Shorts s, Following f 
+					WHERE 
+						f.followee = s.ownerId AND f.follower = '%s' 
+				ORDER BY s.timestamp DESC""";
 
-        return errorOrValue(okUser(userId, password),
-                DB.sql("TODO_TODO_TODO",
-                        format(QUERY_FMT, userId, userId),
-                        String.class));
-    }
+		return errorOrValue( okUser( userId, password), DB.sql( format(QUERY_FMT, userId, userId), String.class));		
+	}
+		
+	protected Result<User> okUser( String userId, String pwd) {
+		return JavaUsers.getInstance().getUser(userId, pwd);
+	}
+	
+	private Result<Void> okUser( String userId ) {
+		var res = okUser( userId, "");
+		if( res.error() == FORBIDDEN )
+			return ok();
+		else
+			return error( res.error() );
+	}
+	
+	@Override
+	public Result<Void> deleteAllShorts(String userId, String password, String token) {
+		Log.info(() -> format("deleteAllShorts : userId = %s, password = %s, token = %s\n", userId, password, token));
 
-    protected Result<User> okUser(String userId, String pwd) {
-        return JavaUsers.getInstance().getUser(userId, pwd);
-    }
-
-    private Result<Void> okUser(String userId) {
-        var res = okUser(userId, "");
-        if (res.error() == FORBIDDEN)
-            return ok();
-        else
-            return error(res.error());
-    }
-
-    @Override
-    public Result<Void> deleteAllShorts(String userId, String password,
-                                        String token) {
-        Log.info(()
-                     -> format("deleteAllShorts : userId = %s, password = "
-                                   + "%s, token = %s\n",
-                               userId, password, token));
-
-        if (!Token.isValid(token, userId))
-            return error(FORBIDDEN);
-
-        if(DB.usingHibernate) {
-            return DB.transaction((hibernate) -> {
-                // delete shorts
-                var query1 =
-                    format("DELETE FROM Shorts s WHERE s.ownerId = '%s'", userId);
-                hibernate.createQuery(query1, Short.class).executeUpdate();
-
-                // delete follows
-                var query2 = format("DELETE FROM Following f WHERE f.follower = '%s' "
-                                        + "OR f.followee = '%s'",
-                                    userId, userId);
-                hibernate.createQuery(query2, Following.class).executeUpdate();
-
-                // delete likes
-                var query3 = format(
-                    "DELETE FROM Likes l WHERE l.ownerId = '%s' OR l.userId = '%s'",
-                    userId, userId);
-                hibernate.createQuery(query3, Likes.class).executeUpdate();
-            });
-        } else {
-            var shortsQuery =
-                format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
-            DB.sql(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class)
-                    .forEach(s -> {
-                        CosmosDB.getInstance().deleteOne(s);
-                    });
-
-            var followingQuery =
-                    format("SELECT * FROM Following f WHERE f.follower = '%s' "
-                                    + "OR f.followee = '%s'", userId, userId);
-            DB.sql(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class)
-                    .forEach(f -> {
-                        CosmosDB.getInstance().deleteOne(f);
-                    });
-
-            var likesQuery =
-                    format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
-                                    + "OR l.userId = '%s'", userId, userId);
-            DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class)
-                    .forEach(l -> {
-                        CosmosDB.getInstance().deleteOne(l);
-                    });
-
-            // TODO error handling
-            return Result.ok();
-        }
-    }
+		if( ! Token.isValid( token, userId ) )
+			return error(FORBIDDEN);
+		
+		return DB.transaction( (hibernate) -> {
+						
+			//delete shorts
+			var query1 = format("DELETE Short s WHERE s.ownerId = '%s'", userId);		
+			hibernate.createQuery(query1, Short.class).executeUpdate();
+			
+			//delete follows
+			var query2 = format("DELETE Following f WHERE f.follower = '%s' OR f.followee = '%s'", userId, userId);		
+			hibernate.createQuery(query2, Following.class).executeUpdate();
+			
+			//delete likes
+			var query3 = format("DELETE Likes l WHERE l.ownerId = '%s' OR l.userId = '%s'", userId, userId);		
+			hibernate.createQuery(query3, Likes.class).executeUpdate();
+			
+		});
+	}
+	
 }

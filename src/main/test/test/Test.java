@@ -39,15 +39,16 @@ public class Test {
         var users = new RestUsersClient(serverURI);
         var shorts = new RestShortsClient(serverURI);
 
-        // TESTED
         show(users.createUser(new User("wales", "12345", "jimmy@wikipedia.pt", "Jimmy Wales")));
+
         show(users.createUser(new User("liskov", "54321", "liskov@mit.edu", "Barbara Liskov")));
 
-        // TESTED
         show(users.updateUser("wales", "12345", new User("wales", "12345", "jimmy@wikipedia.com", "")));
+
+        // TODO --> THIS WAS NOT HERE ORIGINALLY MIGHT NEED TO BE REMOVED BEFORE
+        // SUBMISSION
         show(users.getUser("wales", "12345"));
 
-        // TESTED and with query
         show(users.searchUsers(""));
 
         final String MOST_RECENT_USERS_LIST = "MostRecentUsers";
@@ -55,14 +56,12 @@ public class Test {
 
         Result<tukano.api.Short> s1, s2;
 
-        // TESTED
         show(s2 = shorts.createShort("liskov", "54321"));
         show(s1 = shorts.createShort("wales", "12345"));
         show(shorts.createShort("wales", "12345"));
         show(shorts.createShort("wales", "12345"));
         show(shorts.createShort("wales", "12345"));
 
-        // NOT TESTED
         var blobUrl = URI.create(s2.value().getBlobUrl());
         System.out.println("------->" + blobUrl);
 

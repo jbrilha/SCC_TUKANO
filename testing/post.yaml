@@ -1,14 +1,11 @@
 config:
   target: http://127.0.0.1:8080/tukano/rest
-  plugins:
-    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
-    - name: get
-      duration: 1
-      # arrivalRate: 2
-      arrivalCount: 6
+    - name: post
+      duration: 3
+      arrivalRate: 1
   payload:
-    path: ../data/users.csv
+    path: ./data/users.csv
     order: sequence # selects users sequentially, default is random
     # loadAll: true # load the whole CSV
     skipHeader: true # The first line is a header, so we want to skip it
@@ -21,13 +18,14 @@ config:
       - "displayName"
 
 scenarios:
-- name: "Get users from .csv"
+- name: TuKanoRegister
   flow:
-    - get:
-        url: /users/{{ userId}}
-        qs:
-          pwd: "{{ pwd }}"
-        capture:
-          - json: "$"
-            as: "user"
-    - log: "getUser: {{ user }}"
+    - post:
+        url: /users/
+        headers:
+            Content-Type: application/json
+        json:
+            id: "{{ userId }}" # this parameter is filled from the fields above
+            pwd: "{{ pwd }}"
+            email: "{{ email }}"
+            displayName: "{{ displayName }}"

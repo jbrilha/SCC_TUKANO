@@ -1,7 +1,5 @@
 config:
   target: http://127.0.0.1:8080/tukano/rest
-  plugins:
-    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
     - name: get
       duration: 1 # how long the test will run for, in seconds
