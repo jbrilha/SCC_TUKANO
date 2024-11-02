@@ -95,20 +95,6 @@ function randomBytes(requestParams, context, ee, next) {
     return next();
 }
 
-function getTokenFromCreatedShort(requestParams, response, context, ee, next) {
-    const short = JSON.parse(response.body);
-
-    const url = new URL(short.blobUrl);
-    console.log("\nblobUrl: " + url);
-
-    const token = url.searchParams.get("token");
-    console.log("token: " + token);
-
-    context.vars.createdToken = token;
-
-    return next();
-}
-
 function processDownload(requestParams, response, context, ee, next) {
     const blobBytes = response.body;
     const blobId = context.vars.blobId;
