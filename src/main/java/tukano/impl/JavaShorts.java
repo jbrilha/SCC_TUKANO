@@ -255,13 +255,23 @@ public class JavaShorts implements Shorts {
                 -> format("likes : shortId = %s, pwd = %s\n", shortId,
                 password));
 
-        return errorOrResult(getShort(shortId), shrt -> {
-            var query = format(
-                    "SELECT l.userId FROM Likes l WHERE l.shortId = '%s'", shortId);
+        var query = format(
+                "SELECT l.userId FROM Likes l WHERE l.shortId = '%s'", shortId);
 
-            return errorOrValue(okUser(shrt.getOwnerId(), password),
-                    DB.sql(CosmosDB.LIKES_CONTAINER, query, String.class));
-        });
+        if (DB.usingHibernate) {
+            return errorOrResult(getShort(shortId), shrt -> {
+                return errorOrValue(okUser(shrt.getOwnerId(), password),
+                        DB.sql(CosmosDB.LIKES_CONTAINER, query, String.class));
+            });
+        } else {
+            return errorOrResult(getShort(shortId), shrt -> {
+                return errorOrValue(okUser(shrt.getOwnerId(), password),
+                        DB.sql(CosmosDB.LIKES_CONTAINER, query, JsonNode.class)
+                                .stream()
+                                .map(jsonNode -> jsonNode.get("userId").asText())
+                                .toList());
+            });
+        }
     }
 
     @Override
@@ -280,7 +290,7 @@ public class JavaShorts implements Shorts {
 
         if(usingHibernate){
             return errorOrValue(okUser(userId),
-                DB.sql("TODO_TODO_TODO",
+                DB.sql(CosmosDB.SHORTS_CONTAINER,
                         format(QUERY_FMT, userId, userId),
                         String.class));
         } else {
@@ -298,20 +308,6 @@ public class JavaShorts implements Shorts {
                         .toList();
             });
         }
-
-        /*
-        if (DB.usingHibernate) {
-            return errorOrValue(okUser(userId),
-                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
-        } else {
-            return errorOrValue(okUser(userId),
-                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, JsonNode.class)
-                            .stream()
-                            .map(jsonNode -> jsonNode.get("follower").asText())
-                            .toList());
-        }
-
-         */
     }
 
     protected Result<User> okUser(String userId, String pwd) {
@@ -337,23 +333,48 @@ public class JavaShorts implements Shorts {
         if (!Token.isValid(token, userId))
             return error(FORBIDDEN);
 
-        return DB.transaction((hibernate) -> {
-            // delete shorts
-            var query1 =
-                    format("DELETE FROM Shorts WHERE ownerId = '%s'", userId);
-            hibernate.createQuery(query1, Short.class).executeUpdate();
+        if(usingHibernate) {
+            return DB.transaction((hibernate) -> {
+                // delete shorts
+                var query1 =
+                        format("DELETE FROM Shorts WHERE ownerId = '%s'", userId);
+                hibernate.createQuery(query1, Short.class).executeUpdate();
 
-            // delete follows
-            var query2 = format("DELETE FROM Following f WHERE follower = '%s' " +
-                            "OR followee = '%s'",
-                    userId, userId);
-            hibernate.createQuery(query2, Following.class).executeUpdate();
+                // delete follows
+                var query2 = format("DELETE FROM Following f WHERE follower = '%s' " +
+                                "OR followee = '%s'",
+                        userId, userId);
+                hibernate.createQuery(query2, Following.class).executeUpdate();
 
-            // delete likes
-            var query3 = format(
-                    "DELETE FROM Likes WHERE ownerId = '%s' OR userId = '%s'",
-                    userId, userId);
-            hibernate.createQuery(query3, Likes.class).executeUpdate();
-        });
+                // delete likes
+                var query3 = format(
+                        "DELETE FROM Likes WHERE ownerId = '%s' OR userId = '%s'",
+                        userId, userId);
+                hibernate.createQuery(query3, Likes.class).executeUpdate();
+            });
+        } else {
+            var shortsQuery =
+                    format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
+            DB.sql(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class)
+                    .forEach(s -> {
+                        CosmosDB.getInstance().deleteOne(s);
+                    });
+            var followingQuery =
+                    format("SELECT * FROM Following f WHERE f.follower = '%s' "
+                            + "OR f.followee = '%s'", userId, userId);
+            DB.sql(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class)
+                    .forEach(f -> {
+                        CosmosDB.getInstance().deleteOne(f);
+                    });
+            var likesQuery =
+                    format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
+                            + "OR l.userId = '%s'", userId, userId);
+            DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class)
+                    .forEach(l -> {
+                        CosmosDB.getInstance().deleteOne(l);
+                    });
+            // TODO error handling
+            return Result.ok();
+        }
     }
 }

@@ -27,4 +27,4 @@ scenarios:
           capture:
             - json: "$"
               as: "feed"
-      - log: "getFeed: {{ feed }}"
+      - log: "getFeed ({{ userId }}): {{ feed }}"
