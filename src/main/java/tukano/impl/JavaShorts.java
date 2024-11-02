@@ -15,6 +15,12 @@ import static utils.DB.getOne;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import com.azure.cosmos.models.CosmosBatch;
+import com.azure.cosmos.models.CosmosQueryRequestOptions;
+import com.azure.cosmos.models.PartitionKey;
+import com.fasterxml.jackson.databind.JsonNode;
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.api.Short;
@@ -25,6 +31,7 @@ import tukano.impl.data.Likes;
 import tukano.impl.rest.TukanoRestServer;
 import tukano.impl.storage.azure.CosmosDB;
 import utils.DB;
+import utils.JSON;
 
 public class JavaShorts implements Shorts {
 
@@ -99,12 +106,28 @@ public class JavaShorts implements Shorts {
                                 Token.get());
                     });
                 } else {
-                    var res = DB.deleteOne(shrt);
-                    if(res.isOK()) {
-                        // batch or trigger func
-                        return Result.ok();
+                    // TODO: support transactions...?
+                    var query = "SELECT * FROM c WHERE ENDSWITH(c.id, '_" + shortId + "')";
+                    var res = DB.sql(CosmosDB.LIKES_CONTAINER, query, JsonNode.class);
+
+                    for (var like : res) {
+                        String likeId = like.get("id").asText();
+                        String userId = likeId.substring(0, likeId.indexOf('_'));
+
+                        var l = new Likes(userId, shortId, shrt.getOwnerId());
+                        var deleteLikeResult = CosmosDB.getInstance().deleteOne(l);
+                        if(deleteLikeResult.error() != ErrorCode.OK) {
+                            return error(deleteLikeResult.error());
+                        }
                     }
-                    return Result.error(res.error());
+
+                    var deleteShortResult = CosmosDB.getInstance().deleteOne(shrt);
+                    if(deleteShortResult.error() != ErrorCode.OK) {
+                        return error(deleteShortResult.error());
+                    }
+
+                    JavaBlobs.getInstance().delete(shrt.getBlobUrl(), Token.get());
+                    return Result.ok();
                 }
             });
         });
@@ -138,8 +161,13 @@ public class JavaShorts implements Shorts {
 
         var query =
                 format("SELECT s.id FROM Shorts s WHERE s.ownerId = '%s'", userId);
-        return errorOrValue(okUser(userId), DB.sql(CosmosDB.SHORTS_CONTAINER,
-                query, String.class));
+
+        return errorOrValue(okUser(userId),
+                DB.sql(CosmosDB.SHORTS_CONTAINER, query, JsonNode.class)
+                        .stream()
+                        .map(jsonNode -> jsonNode.get("id").asText())
+                        .collect(Collectors.toList())
+        );
     }
 
     @Override
@@ -213,6 +241,12 @@ public class JavaShorts implements Shorts {
                     JOIN Following f ON f.followee = s.ownerId
 			    	    WHERE f.follower = '%s' 
 				ORDER BY timestamp DESC""";
+
+        // get following from userId -> retorna uma lista com Ids das pessoas que eu sigo
+
+
+
+        // sort by timestamp
 
         return errorOrValue(okUser(userId, password),
                 DB.sql("TODO_TODO_TODO", format(QUERY_FMT, userId, userId),
