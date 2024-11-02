@@ -67,7 +67,8 @@ public class JavaBlobs implements Blobs {
         // return storage.read(toPath(blobId));
     }
 
-    @Override
+    /* @Override
+    // TODO This is completely ignorable I think?
     public Result<Void> downloadToSink(String blobId, Consumer<byte[]> sink,
                                        String token) {
         Log.info(()
@@ -78,7 +79,7 @@ public class JavaBlobs implements Blobs {
             return error(FORBIDDEN);
 
         return storage.read(toPath(blobId), sink);
-    }
+    } */
 
     @Override
     public Result<Void> delete(String blobId, String token) {
@@ -94,18 +95,16 @@ public class JavaBlobs implements Blobs {
 
     @Override
     public Result<Void> deleteAllBlobs(String userId, String token) {
-        Log.info(()
-                     -> format("deleteAllBlobs : userId = %s, token=%s\n",
+        Log.info(() -> format("deleteAllBlobs : userId = %s, token=%s\n",
                                userId, token));
 
         if (!Token.isValid(token, userId))
             return error(FORBIDDEN);
 
-        return storage.delete(toPath(userId));
+        return azStorage.deleteAll(userId);
     }
 
     private boolean validBlobId(String blobId, String token) {
-        System.out.println(toURL(blobId));
         return Token.isValid(token, toURL(blobId));
     }
 

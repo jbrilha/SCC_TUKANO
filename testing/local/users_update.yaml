@@ -1,0 +1,40 @@
+config:
+  target: http://127.0.0.1:8080/tukano/rest
+  plugins:
+    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  phases:
+    - name: put
+      duration: 1
+      # arrivalRate: 2
+      arrivalCount: 6
+  payload:
+    path: ../data/users.csv
+    order: sequence # selects users sequentially, default is random
+    # loadAll: true # load the whole CSV
+    skipHeader: true # The first line is a header, so we want to skip it
+    delimiter: "," # standard delimiter
+    skipEmptyLines: true # not important in our case
+    fields:
+      - "userId"
+      - "pwd"
+      - "email"
+      - "displayName"
+
+scenarios:
+- name: "Update users from .csv"
+  flow:
+    - put:
+        url: /users/{{ userId }}
+        headers:
+            Content-Type: application/json
+        qs:
+          pwd: "{{ pwd }}"
+        json:
+            id: "{{ userId }}" # this parameter is filled from the fields above
+            pwd: "{{ pwd }}"
+            email: "updated.{{ email }}"
+            displayName: "UPDATED {{ displayName }}"
+        capture:
+          - json: "$"
+            as: "updatedUser"
+    - log: "Updated user: {{ updatedUser }}"

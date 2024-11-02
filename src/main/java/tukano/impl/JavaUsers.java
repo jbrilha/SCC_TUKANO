@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 import tukano.api.Result;
 import tukano.api.User;
 import tukano.api.Users;
+import tukano.impl.storage.azure.CosmosDB;
 import utils.DB;
 
 public class JavaUsers implements Users {
@@ -94,10 +95,15 @@ public class JavaUsers implements Users {
     public Result<List<User>> searchUsers(String pattern) {
         Log.info(() -> format("searchUsers : patterns = %s\n", pattern));
 
-        var query =
-            format("SELECT * FROM Users u WHERE UPPER(u.id) LIKE '%%%s%%'",
-                   pattern.toUpperCase());
-        var hits = DB.sql(query, User.class)
+        String query;
+        if (DB.usingHibernate) {
+            query = format("SELECT * FROM Users u WHERE UPPER(u.id) LIKE '%%%s%%'",
+                    pattern.toUpperCase());
+        } else {
+            query = format("SELECT * FROM Users u WHERE CONTAINS(UPPER(u.id), '%s')",
+                    pattern.toUpperCase());
+        }
+        var hits = DB.sql(CosmosDB.USERS_CONTAINER, query, User.class)
                        .stream()
                        .map(User::copyWithoutPassword)
                        .toList();

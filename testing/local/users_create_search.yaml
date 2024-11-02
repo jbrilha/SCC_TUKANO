@@ -1,0 +1,54 @@
+config:
+  target: http://127.0.0.1:8080/tukano/rest
+  plugins:
+    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  processor: ../test-utils.js
+  phases:
+    - name: search
+      duration: 1
+      # arrivalRate: 2
+      arrivalCount: 1
+    - name: create
+      duration: 1
+      # arrivalRate: 2
+      arrivalCount: 6
+  payload:
+    path: ../data/users.csv
+    order: sequence # selects users sequentially, default is random
+    # loadAll: true # load the whole CSV
+    skipHeader: true # The first line is a header, so we want to skip it
+    delimiter: "," # standard delimiter
+    skipEmptyLines: true # not important in our case
+    fields:
+      - "userId"
+      - "pwd"
+      - "email"
+      - "displayName"
+
+scenarios:
+  - name: "Create users from .csv"
+    flow:
+      - post:
+          url: /users/
+          headers:
+            Content-Type: application/json
+          json:
+            id: "{{ userId }}" # this parameter is filled from the fields above
+            pwd: "{{ pwd }}"
+            email: "{{ email }}"
+            displayName: "{{ displayName }}"
+
+    # skill issue maybe but I can't get this to run only once at the end
+  - name: "Search users with query"
+    flow:
+      - get:
+          url: /users
+          count: 1
+          # either this or [ -v  '{"query": "<query>"}' ] when running this test
+          # beforeRequest: "setQuery"
+          qs:
+            query: "{{ query }}"
+          capture:
+            - json: "$"
+              as: "results"
+      - log: "Search: {{ query }}: {{ results }}"
