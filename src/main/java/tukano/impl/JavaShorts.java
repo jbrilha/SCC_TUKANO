@@ -13,6 +13,9 @@ import static utils.DB.getOne;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
+
+import com.azure.cosmos.models.CosmosBatch;
+import com.azure.cosmos.models.PartitionKey;
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.api.Short;
@@ -84,17 +87,28 @@ public class JavaShorts implements Shorts {
 
         return errorOrResult(getShort(shortId), shrt -> {
             return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-                return DB.transaction(hibernate -> {
-                    hibernate.remove(shrt);
+                if(DB.usingHibernate){
+                    return DB.transaction(hibernate -> {
+                        hibernate.remove(shrt);
 
-                    var query = format("DELETE Likes l WHERE l.shortId = '%s'",
-                            shortId);
-                    hibernate.createNativeQuery(query, Likes.class)
-                            .executeUpdate();
+                        var query = format("DELETE Likes l WHERE l.shortId = '%s'",
+                                shortId);
+                        hibernate.createNativeQuery(query, Likes.class)
+                                .executeUpdate();
 
-                    JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-                            Token.get());
-                });
+                        JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
+                                Token.get());
+                    });
+                } else {
+                    var container = CosmosDB.getInstance().getContainer(CosmosDB.SHORTS_CONTAINER);
+                    System.out.println("<<<<<<<<<<< Container name: " + container.getId());
+
+                    CosmosBatch batch = CosmosBatch.createCosmosBatch(
+                            new PartitionKey(shrt.getOwnerId())
+                    );
+
+                    return null;
+                }
             });
         });
     }
