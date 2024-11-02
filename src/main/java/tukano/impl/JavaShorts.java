@@ -11,7 +11,9 @@ import static tukano.api.Result.errorOrValue;
 import static tukano.api.Result.errorOrVoid;
 import static tukano.api.Result.ok;
 import static utils.DB.getOne;
+import static utils.DB.usingHibernate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -162,12 +164,16 @@ public class JavaShorts implements Shorts {
         var query =
                 format("SELECT s.id FROM Shorts s WHERE s.ownerId = '%s'", userId);
 
-        return errorOrValue(okUser(userId),
-                DB.sql(CosmosDB.SHORTS_CONTAINER, query, JsonNode.class)
-                        .stream()
-                        .map(jsonNode -> jsonNode.get("id").asText())
-                        .collect(Collectors.toList())
-        );
+        if (DB.usingHibernate) {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.SHORTS_CONTAINER, query, String.class));
+        } else {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.SHORTS_CONTAINER, query, JsonNode.class)
+                            .stream()
+                            .map(jsonNode -> jsonNode.get("id").asText())
+                            .toList());
+        }
     }
 
     @Override
@@ -194,8 +200,38 @@ public class JavaShorts implements Shorts {
         var query =
                 format("SELECT f.follower FROM Following f WHERE f.followee = '%s'",
                         userId);
-        return errorOrValue(okUser(userId, password),
-                DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
+
+        if (DB.usingHibernate) {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
+        } else {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, JsonNode.class)
+                            .stream()
+                            .map(jsonNode -> jsonNode.get("follower").asText())
+                            .toList());
+        }
+    }
+
+    private Result<List<String>> following(String userId, String password){
+        Log.info(()
+                -> format("following : userId = %s, pwd = %s\n", userId,
+                password));
+
+        var query =
+                format("SELECT f.followee FROM Following f WHERE f.follower = '%s'",
+                        userId);
+
+        if (DB.usingHibernate) {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
+        } else {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, JsonNode.class)
+                            .stream()
+                            .map(jsonNode -> jsonNode.get("followee").asText())
+                            .toList());
+        }
     }
 
     @Override
@@ -242,15 +278,40 @@ public class JavaShorts implements Shorts {
 			    	    WHERE f.follower = '%s' 
 				ORDER BY timestamp DESC""";
 
-        // get following from userId -> retorna uma lista com Ids das pessoas que eu sigo
-
-
-
-        // sort by timestamp
-
-        return errorOrValue(okUser(userId, password),
-                DB.sql("TODO_TODO_TODO", format(QUERY_FMT, userId, userId),
+        if(usingHibernate){
+            return errorOrValue(okUser(userId),
+                DB.sql("TODO_TODO_TODO",
+                        format(QUERY_FMT, userId, userId),
                         String.class));
+        } else {
+            return errorOrValue(okUser(userId, password), user -> {
+                List<String> usersToFetch = new ArrayList<>();
+                usersToFetch.add(userId);
+                usersToFetch.addAll(following(userId, password).value());
+
+                var query = format("SELECT * FROM c WHERE c.ownerId IN (%s) ORDER BY c.timestamp DESC",
+                        usersToFetch.stream().map(f -> "'" + f + "'").collect(Collectors.joining(",")));
+
+                return DB.sql(CosmosDB.SHORTS_CONTAINER, query, JsonNode.class)
+                        .stream()
+                        .map(jsonNode -> jsonNode.get("id").asText())
+                        .toList();
+            });
+        }
+
+        /*
+        if (DB.usingHibernate) {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, String.class));
+        } else {
+            return errorOrValue(okUser(userId),
+                    DB.sql(CosmosDB.FOLLOWING_CONTAINER, query, JsonNode.class)
+                            .stream()
+                            .map(jsonNode -> jsonNode.get("follower").asText())
+                            .toList());
+        }
+
+         */
     }
 
     protected Result<User> okUser(String userId, String pwd) {
