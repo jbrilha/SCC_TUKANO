@@ -18,13 +18,13 @@ config:
       - "pwd"
 
 scenarios:
-  - name: "POST then GET"
+  - name: "GET followers"
     flow:
       - get:
-          url: /shorts/{{ userId }}/feed
+          url: /shorts/{{ userId }}/followers
           qs:
             pwd: "{{ pwd }}"
           capture:
             - json: "$"
-              as: "feed"
-      - log: "getFeed ({{ userId }}): {{ feed }}"
+              as: "followers"
+      - log: "getFollowers for {{ userId }}: {{ followers }}"

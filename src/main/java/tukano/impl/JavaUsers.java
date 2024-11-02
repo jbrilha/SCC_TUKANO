@@ -44,7 +44,7 @@ public class JavaUsers implements Users {
     @Override
     public Result<User> getUser(String userId, String pwd) {
         Log.info(
-            () -> format("getUser : userId = %s, pwd = %s\n", userId, pwd));
+                () -> format("getUser : userId = %s, pwd = %s\n", userId, pwd));
 
         if (userId == null)
             return error(BAD_REQUEST);
@@ -55,40 +55,40 @@ public class JavaUsers implements Users {
     @Override
     public Result<User> updateUser(String userId, String pwd, User other) {
         Log.info(()
-                     -> format("updateUser : userId = %s, pwd = %s, user: %s\n",
-                               userId, pwd, other));
+                -> format("updateUser : userId = %s, pwd = %s, user: %s\n",
+                userId, pwd, other));
 
         if (badUpdateUserInfo(userId, pwd, other))
             return error(BAD_REQUEST);
 
         return errorOrResult(
-            validatedUserOrError(DB.getOne(userId, User.class), pwd),
-            user -> DB.updateOne(user.updateFrom(other)));
+                validatedUserOrError(DB.getOne(userId, User.class), pwd),
+                user -> DB.updateOne(user.updateFrom(other)));
     }
 
     @Override
     public Result<User> deleteUser(String userId, String pwd) {
         Log.info(
-            () -> format("deleteUser : userId = %s, pwd = %s\n", userId, pwd));
+                () -> format("deleteUser : userId = %s, pwd = %s\n", userId, pwd));
 
         if (userId == null || pwd == null)
             return error(BAD_REQUEST);
 
         return errorOrResult(
-            validatedUserOrError(DB.getOne(userId, User.class), pwd), user -> {
-                // Delete user shorts and related info asynchronously in a
-                // separate thread
-                Executors.defaultThreadFactory()
-                    .newThread(() -> {
-                        JavaShorts.getInstance().deleteAllShorts(
-                            userId, pwd, Token.get(userId));
-                        JavaBlobs.getInstance().deleteAllBlobs(
-                            userId, Token.get(userId));
-                    })
-                    .start();
+                validatedUserOrError(DB.getOne(userId, User.class), pwd), user -> {
+                    // Delete user shorts and related info asynchronously in a
+                    // separate thread
+                    Executors.defaultThreadFactory()
+                            .newThread(() -> {
+                                JavaShorts.getInstance().deleteAllShorts(
+                                        userId, pwd, Token.get(userId));
+                                JavaBlobs.getInstance().deleteAllBlobs(
+                                        userId, Token.get(userId));
+                            })
+                            .start();
 
-                return DB.deleteOne(user);
-            });
+                    return DB.deleteOne(user);
+                });
     }
 
     @Override
@@ -104,9 +104,9 @@ public class JavaUsers implements Users {
                     pattern.toUpperCase());
         }
         var hits = DB.sql(CosmosDB.USERS_CONTAINER, query, User.class)
-                       .stream()
-                       .map(User::copyWithoutPassword)
-                       .toList();
+                .stream()
+                .map(User::copyWithoutPassword)
+                .toList();
 
         return ok(hits);
     }
