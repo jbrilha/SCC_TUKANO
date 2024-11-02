@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const fs = require("fs");
 
 function randomUsername(char_limit) {
     const letters = "abcdefghijklmnopqrstuvwxyz";
@@ -80,7 +81,7 @@ function getBlobIdFromShort(requestParams, response, context, ee, next) {
     const token = url.searchParams.get("token");
     // console.log("token: " + token);
 
-    context.vars.token = token;
+    context.vars.gottenToken = token;
     context.vars.blobId = blobId;
 
     return next();
@@ -94,11 +95,36 @@ function randomBytes(requestParams, context, ee, next) {
     return next();
 }
 
+function getTokenFromCreatedShort(requestParams, response, context, ee, next) {
+    const short = JSON.parse(response.body);
+
+    const url = new URL(short.blobUrl);
+    console.log("\nblobUrl: " + url);
+
+    const token = url.searchParams.get("token");
+    console.log("token: " + token);
+
+    context.vars.createdToken = token;
+
+    return next();
+}
+
+function processDownload(requestParams, response, context, ee, next) {
+    const blobBytes = response.body;
+    const blobId = context.vars.blobId;
+
+    fs.writeFileSync("blobs/" + blobId, blobBytes);
+    console.log("Downloaded blob: " + blobId);
+
+    return next();
+}
+
 module.exports = {
     randomBytes,
     uploadRandomizedUser,
     processCreateResponse,
     captureUserResponse,
     getBlobIdFromShort,
+    processDownload,
     setQuery,
 };
