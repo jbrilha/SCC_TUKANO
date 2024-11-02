@@ -207,12 +207,12 @@ public class JavaShorts implements Shorts {
                      -> format("getFeed : userId = %s, pwd = %s\n", userId,
                                password));
         final var QUERY_FMT = """
-				SELECT s.id, s.timestamp FROM Shorts s WHERE	s.ownerId = '%s'				
+				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'				
 				UNION			
-				SELECT s.id, s.timestamp FROM Shorts s, Following f 
-					WHERE 
-						f.followee = s.ownerId AND f.follower = '%s' 
-				ORDER BY s.timestamp DESC""";
+				SELECT s.id, s.timestamp FROM Shorts s
+                    JOIN Following f ON f.followee = s.ownerId
+			    	    WHERE f.follower = '%s' 
+				ORDER BY timestamp DESC""";
 
         return errorOrValue(okUser(userId, password),
             DB.sql("TODO_TODO_TODO", format(QUERY_FMT, userId, userId),
