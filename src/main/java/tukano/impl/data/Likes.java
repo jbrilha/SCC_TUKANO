@@ -7,26 +7,20 @@ import jakarta.persistence.Id;
 
 @Entity
 public class Likes {
+    String id; // for Cosmos NoSQL
 	
 	@Id 
 	String userId;
 	
 	@Id 
 	String shortId;
-	
-	public String getOwnerId() {
-		return ownerId;
-	}
-
-	public void setOwnerId(String ownerId) {
-		this.ownerId = ownerId;
-	}
 
 	String ownerId;
 	
 	public Likes() {}
 
 	public Likes(String userId, String shortId, String ownerId) {
+        this.id = userId + "_" + shortId;
 		this.userId = userId;
 		this.shortId = shortId;
 		this.ownerId = ownerId;
@@ -47,10 +41,26 @@ public class Likes {
 	public void setShortId(String shortId) {
 		this.shortId = shortId;
 	}
+	
+	public String getOwnerId() {
+		return ownerId;
+	}
+
+	public void setOwnerId(String ownerId) {
+		this.ownerId = ownerId;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
 
 	@Override
 	public String toString() {
-		return "Likes [userId=" + userId + ", shortId=" + shortId + ", ownerId=" + ownerId + "]";
+		return "Likes [id=" + id + ", userId=" + userId + ", shortId=" + shortId + ", ownerId=" + ownerId + "]";
 	}
 
 	@Override

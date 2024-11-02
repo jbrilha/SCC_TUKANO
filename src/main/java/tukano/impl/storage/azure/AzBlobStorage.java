@@ -1,17 +1,15 @@
 package tukano.impl.storage.azure;
 
-import static tukano.api.Result.error;
-import static tukano.api.Result.ok;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.INTERNAL_ERROR;
-
-import java.util.function.Consumer;
+import static tukano.api.Result.error;
+import static tukano.api.Result.ok;
 
 import com.azure.core.util.BinaryData;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobContainerClientBuilder;
-
+import java.util.function.Consumer;
 import tukano.api.Result;
 import tukano.impl.storage.BlobStorage;
 
@@ -20,7 +18,7 @@ public class AzBlobStorage implements BlobStorage {
 
     private static final String BLOBS_CONTAINER_NAME = "shorts";
     private static final String storageConnectionString =
-        System.getenv("BlobStoreConnection");
+        System.getProperty("BlobStoreConnection");
 
     public AzBlobStorage() {
         this.containerClient = new BlobContainerClientBuilder()
@@ -82,24 +80,24 @@ public class AzBlobStorage implements BlobStorage {
     public Result<Void> read(String path, Consumer<byte[]> sink) {
         if (path == null)
             return error(BAD_REQUEST);
-        
+
         // TODO figure out if we need to write to sink from azure
 
         // try {
-        //     // Get client to blob
-        //     BlobClient blob = containerClient.getBlobClient(path);
+        // // Get client to blob
+        // BlobClient blob = containerClient.getBlobClient(path);
         //
-        //     // Download contents to BinaryData (check documentation for other
-        //     // alternatives)
-        //     BinaryData data = blob.downloadContent();
+        // // Download contents to BinaryData (check documentation for other
+        // // alternatives)
+        // BinaryData data = blob.downloadContent();
         //
-        //     byte[] bytes = data.toBytes();
+        // byte[] bytes = data.toBytes();
         //
-        //     System.out.println("Blob size : " + bytes.length);
-        //     return bytes != null ? ok(bytes) : error(INTERNAL_ERROR);
+        // System.out.println("Blob size : " + bytes.length);
+        // return bytes != null ? ok(bytes) : error(INTERNAL_ERROR);
         // } catch (Exception e) {
-        //     e.printStackTrace();
-        //     return error(INTERNAL_ERROR);
+        // e.printStackTrace();
+        // return error(INTERNAL_ERROR);
         // }
         // IO.read(file, CHUNK_SIZE, sink);
         return ok();
@@ -115,6 +113,29 @@ public class AzBlobStorage implements BlobStorage {
             BlobClient blob = containerClient.getBlobClient(path);
 
             blob.delete();
+
+            return ok();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return error(INTERNAL_ERROR);
+        }
+    }
+
+    @Override
+    public Result<Void> deleteAll(String userId) {
+        if (userId == null)
+            return error(BAD_REQUEST);
+
+        try {
+            containerClient.listBlobs().forEach(blob -> {
+                if(blob.getName().contains(userId)) {
+                    // TODO would this be preferable over an  actual deletion?
+                    // blob.setDeleted(true);
+
+                    BlobClient bc = containerClient.getBlobClient(blob.getName());
+                    bc.delete();
+                }
+            });
 
             return ok();
         } catch (Exception e) {

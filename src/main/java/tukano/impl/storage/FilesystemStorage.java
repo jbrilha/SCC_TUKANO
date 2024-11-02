@@ -85,6 +85,11 @@ public class FilesystemStorage implements BlobStorage {
         }
         return ok();
     }
+    @Override
+    public Result<Void> deleteAll(String userId) {
+        // This class isn't used at all but to satisfy the compiler....
+        return ok();
+    }
 
     private File toFile(String path) {
         var res = new File(rootDir + path);

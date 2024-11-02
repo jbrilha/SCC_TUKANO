@@ -3,6 +3,8 @@ package tukano.impl;
 import static java.lang.String.format;
 import static tukano.api.Result.ErrorCode.BAD_REQUEST;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
+import static tukano.api.Result.ErrorCode.NOT_IMPLEMENTED;
+import static tukano.api.Result.ErrorCode;
 import static tukano.api.Result.error;
 import static tukano.api.Result.errorOrResult;
 import static tukano.api.Result.errorOrValue;
@@ -13,9 +15,6 @@ import static utils.DB.getOne;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
-
-import com.azure.cosmos.models.CosmosBatch;
-import com.azure.cosmos.models.PartitionKey;
 import tukano.api.Blobs;
 import tukano.api.Result;
 import tukano.api.Short;
@@ -80,18 +79,18 @@ public class JavaShorts implements Shorts {
     }
 
     @Override
+
     public Result<Void> deleteShort(String shortId, String password) {
-        Log.info(()
-                -> format("deleteShort : shortId = %s, pwd = %s\n",
+        Log.info(() -> format("deleteShort : shortId = %s, pwd = %s\n",
                 shortId, password));
 
         return errorOrResult(getShort(shortId), shrt -> {
             return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-                if(DB.usingHibernate){
+                if (DB.usingHibernate) {
                     return DB.transaction(hibernate -> {
                         hibernate.remove(shrt);
 
-                        var query = format("DELETE Likes l WHERE l.shortId = '%s'",
+                        var query = format("DELETE FROM likes WHERE shortId = '%s'",
                                 shortId);
                         hibernate.createNativeQuery(query, Likes.class)
                                 .executeUpdate();
@@ -100,18 +99,38 @@ public class JavaShorts implements Shorts {
                                 Token.get());
                     });
                 } else {
-                    var container = CosmosDB.getInstance().getContainer(CosmosDB.SHORTS_CONTAINER);
-                    System.out.println("<<<<<<<<<<< Container name: " + container.getId());
-
-                    CosmosBatch batch = CosmosBatch.createCosmosBatch(
-                            new PartitionKey(shrt.getOwnerId())
-                    );
-
-                    return null;
+                    var res = DB.deleteOne(shrt);
+                    if(res.isOK()) {
+                        // batch or trigger func
+                        return Result.ok();
+                    }
+                    return Result.error(res.error());
                 }
             });
         });
     }
+
+    /* public Result<Void> deleteShort(String shortId, String password) {
+        Log.info(()
+                     -> format("deleteShort : shortId = %s, pwd = %s\n",
+                               shortId, password));
+
+        return errorOrResult(getShort(shortId), shrt -> {
+            return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
+                return DB.transaction(hibernate -> {
+                    hibernate.remove(shrt);
+
+                    var query = format("DELETE FROM likes WHERE shortId = '%s'",
+                                       shortId);
+                    hibernate.createNativeQuery(query, Likes.class)
+                        .executeUpdate();
+
+                    JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
+                                                   Token.get());
+                });
+            });
+        });
+    } */
 
     @Override
     public Result<List<String>> getShorts(String userId) {
@@ -188,12 +207,12 @@ public class JavaShorts implements Shorts {
                 -> format("getFeed : userId = %s, pwd = %s\n", userId,
                 password));
         final var QUERY_FMT = """
-				SELECT s.id, s.timestamp FROM Shorts s WHERE	s.ownerId = '%s'				
+				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'				
 				UNION			
-				SELECT s.id, s.timestamp FROM Shorts s, Following f 
-					WHERE 
-						f.followee = s.ownerId AND f.follower = '%s' 
-				ORDER BY s.timestamp DESC""";
+				SELECT s.id, s.timestamp FROM Shorts s
+                    JOIN Following f ON f.followee = s.ownerId
+			    	    WHERE f.follower = '%s' 
+				ORDER BY timestamp DESC""";
 
         return errorOrValue(okUser(userId, password),
                 DB.sql("TODO_TODO_TODO", format(QUERY_FMT, userId, userId),
@@ -226,18 +245,18 @@ public class JavaShorts implements Shorts {
         return DB.transaction((hibernate) -> {
             // delete shorts
             var query1 =
-                    format("DELETE Short s WHERE s.ownerId = '%s'", userId);
+                    format("DELETE FROM Shorts WHERE ownerId = '%s'", userId);
             hibernate.createQuery(query1, Short.class).executeUpdate();
 
             // delete follows
-            var query2 = format("DELETE Following f WHERE f.follower = '%s' " +
-                            "OR f.followee = '%s'",
+            var query2 = format("DELETE FROM Following f WHERE follower = '%s' " +
+                            "OR followee = '%s'",
                     userId, userId);
             hibernate.createQuery(query2, Following.class).executeUpdate();
 
             // delete likes
             var query3 = format(
-                    "DELETE Likes l WHERE l.ownerId = '%s' OR l.userId = '%s'",
+                    "DELETE FROM Likes WHERE ownerId = '%s' OR userId = '%s'",
                     userId, userId);
             hibernate.createQuery(query3, Likes.class).executeUpdate();
         });
