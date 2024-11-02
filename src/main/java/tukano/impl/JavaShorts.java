@@ -268,23 +268,51 @@ public class JavaShorts implements Shorts {
         if (!Token.isValid(token, userId))
             return error(FORBIDDEN);
 
-        return DB.transaction((hibernate) -> {
-            // delete shorts
-            var query1 =
-                format("DELETE FROM Shorts WHERE ownerId = '%s'", userId);
-            hibernate.createQuery(query1, Short.class).executeUpdate();
+        if(DB.usingHibernate) {
+            return DB.transaction((hibernate) -> {
+                // delete shorts
+                var query1 =
+                    format("DELETE FROM Shorts s WHERE s.ownerId = '%s'", userId);
+                hibernate.createQuery(query1, Short.class).executeUpdate();
 
-            // delete follows
-            var query2 = format("DELETE FROM Following f WHERE follower = '%s' "
-                                    + "OR followee = '%s'",
-                                userId, userId);
-            hibernate.createQuery(query2, Following.class).executeUpdate();
+                // delete follows
+                var query2 = format("DELETE FROM Following f WHERE f.follower = '%s' "
+                                        + "OR f.followee = '%s'",
+                                    userId, userId);
+                hibernate.createQuery(query2, Following.class).executeUpdate();
 
-            // delete likes
-            var query3 = format(
-                "DELETE FROM Likes WHERE ownerId = '%s' OR userId = '%s'",
-                userId, userId);
-            hibernate.createQuery(query3, Likes.class).executeUpdate();
-        });
+                // delete likes
+                var query3 = format(
+                    "DELETE FROM Likes l WHERE l.ownerId = '%s' OR l.userId = '%s'",
+                    userId, userId);
+                hibernate.createQuery(query3, Likes.class).executeUpdate();
+            });
+        } else {
+            var shortsQuery =
+                format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
+            DB.sql(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class)
+                    .forEach(s -> {
+                        CosmosDB.getInstance().deleteOne(s);
+                    });
+
+            var followingQuery =
+                    format("SELECT * FROM Following f WHERE f.follower = '%s' "
+                                    + "OR f.followee = '%s'", userId, userId);
+            DB.sql(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class)
+                    .forEach(f -> {
+                        CosmosDB.getInstance().deleteOne(f);
+                    });
+
+            var likesQuery =
+                    format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
+                                    + "OR l.userId = '%s'", userId, userId);
+            DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class)
+                    .forEach(l -> {
+                        CosmosDB.getInstance().deleteOne(l);
+                    });
+
+            // TODO error handling
+            return Result.ok();
+        }
     }
 }
