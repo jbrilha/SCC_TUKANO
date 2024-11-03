@@ -11,8 +11,6 @@ public class Token {
 	private static final long MAX_TOKEN_AGE = 10000;
 	private static String secret = System.getProperty("SECRET");
 
-    // TODO this was called in the previous tukanoRestServer (before deployment)
-    // so instead I set the secret here, maybe not ideal?
 	public static void setSecret(String s) {
 		secret = s;
 	}

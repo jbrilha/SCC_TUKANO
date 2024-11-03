@@ -19,7 +19,7 @@ import tukano.impl.Token;
 public class Short {
 	
 	@Id
-	private String id; // TODO explain why this is here for CosmosDB
+	private String id;
 	String ownerId;
 	String blobUrl;
 	long timestamp;

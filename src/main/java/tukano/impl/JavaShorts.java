@@ -57,8 +57,7 @@ public class JavaShorts implements Shorts {
 
         return errorOrResult(okUser(userId, password), user -> {
             var shortId = format("%s+%s", userId, UUID.randomUUID());
-            // TODO change to actual az storage URL
-            var blobUrl = format("%s/%s/%s", TukanoRestServer.serverURI,
+            var blobUrl = format("%s/%s/%s", Blobs.STORAGE_ENDPOINT,
                     Blobs.NAME, shortId);
             var shrt = new Short(shortId, userId, blobUrl);
 
@@ -116,7 +115,6 @@ public class JavaShorts implements Shorts {
                                                        Token.get());
                     });
                 } else {
-                    // TODO: support transactions...?
                     var query = "SELECT * FROM c WHERE ENDSWITH(c.id, '_" + shortId + "')";
                     var res = DB.sql(CosmosDB.LIKES_CONTAINER, query, JsonNode.class);
 
@@ -142,30 +140,6 @@ public class JavaShorts implements Shorts {
             });
         });
     }
-
-    /*
-     * public Result<Void> deleteShort(String shortId, String password) {
-     * Log.info(()
-     * -> format("deleteShort : shortId = %s, pwd = %s\n",
-     * shortId, password));
-     *
-     * return errorOrResult(getShort(shortId), shrt -> {
-     * return errorOrResult(okUser(shrt.getOwnerId(), password), user -> {
-     * return DB.transaction(hibernate -> {
-     * hibernate.remove(shrt);
-     *
-     * var query = format("DELETE FROM likes WHERE shortId = '%s'",
-     * shortId);
-     * hibernate.createNativeQuery(query, Likes.class)
-     * .executeUpdate();
-     *
-     * JavaBlobs.getInstance().delete(shrt.getBlobUrl(),
-     * Token.get());
-     * });
-     * });
-     * });
-     * }
-     */
 
     @Override
     public Result<List<String>> getShorts(String userId) {
@@ -283,20 +257,20 @@ public class JavaShorts implements Shorts {
     }
 
     @Override
-    // TODO this needs a different "union" when using Cosmos NoSQL
     public Result<List<String>> getFeed(String userId, String password) {
         Log.info(()
                 -> format("getFeed : userId = %s, pwd = %s\n", userId,
                 password));
-        final var QUERY_FMT = """
-				SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'
-				UNION			
-				SELECT s.id, s.timestamp FROM Shorts s
-                    JOIN Following f ON f.followee = s.ownerId
-			    	    WHERE f.follower = '%s' 
-				ORDER BY timestamp DESC""";
 
         if(usingHibernate){
+            final var QUERY_FMT = """
+                    SELECT s.id, s.timestamp FROM Shorts s WHERE s.ownerId = '%s'
+                    UNION			
+                    SELECT s.id, s.timestamp FROM Shorts s
+                        JOIN Following f ON f.followee = s.ownerId
+                            WHERE f.follower = '%s' 
+                    ORDER BY timestamp DESC""";
+
             return errorOrValue(okUser(userId),
                 DB.sql(CosmosDB.SHORTS_CONTAINER,
                         format(QUERY_FMT, userId, userId),
@@ -361,34 +335,39 @@ public class JavaShorts implements Shorts {
                 hibernate.createQuery(query3, Likes.class).executeUpdate();
             });
         } else {
+            List<Exception> errs = new ArrayList<>();
+
             var shortsQuery =
                     format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
-          
-            DB.sql(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class)
-                    .forEach(s -> {
-                        CosmosDB.getInstance().deleteOne(s);
-                    });
+            deleteFromContainer(CosmosDB.SHORTS_CONTAINER, shortsQuery, Short.class, errs);
 
             var followingQuery =
                     format("SELECT * FROM Following f WHERE f.follower = '%s' "
                             + "OR f.followee = '%s'", userId, userId);
-          
-            DB.sql(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class)
-                    .forEach(f -> {
-                        CosmosDB.getInstance().deleteOne(f);
-                    });
+            deleteFromContainer(CosmosDB.FOLLOWING_CONTAINER, followingQuery, Following.class, errs);
 
             var likesQuery =
                     format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
                             + "OR l.userId = '%s'", userId, userId);
+            deleteFromContainer(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class, errs);
 
-            DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Likes.class)
-                    .forEach(l -> {
-                        CosmosDB.getInstance().deleteOne(l);
-                    });
+            if(errs.isEmpty()) {
+                return Result.ok();
+            }
 
-            // TODO error handling
-            return Result.ok();
+            return Result.error(ErrorCode.INTERNAL_ERROR);
         }
+    }
+
+    private <T> void deleteFromContainer(String container, String query, Class<T> clazz, List<Exception> errs) {
+        DB.sql(container, query, clazz).forEach(item -> {
+            try {
+                CosmosDB.getInstance().deleteOne(item);
+                
+            } catch (Exception e) {
+                errs.add(e);
+                Log.warning(format("Failed to delete item with class |%s| from container |%s|.", clazz, container));
+            }
+        });
     }
 }

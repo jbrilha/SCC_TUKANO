@@ -15,7 +15,7 @@ import tukano.impl.storage.azure.CosmosDB;
 
 public class DB {
 
-    // TODO for testing purposes
+    // for testing purposes
     public static final boolean usingHibernate = false;
 
     public static <T> List<T> sql(String containerName, String query, Class<T> clazz) {
@@ -28,7 +28,6 @@ public class DB {
             return res.value();
         }
 
-        // TODO is this bad?
         return Collections.emptyList();
     }
 
@@ -42,30 +41,31 @@ public class DB {
             return res.value();
         }
 
-        // TODO is this bad?
         return Collections.emptyList();
     }
 
     public static <T> Result<T> getOne(String id, Class<T> clazz) {
-        String[] classSplit = clazz.toString().toLowerCase().split("\\.");
-        String className = classSplit[classSplit.length - 1];
-        // TODO this is kinda disgusting but avoids type checking so..? lmk
+        String key = clazz.getSimpleName().toLowerCase() + ":" + id;
+        var cacheRes = RedisCache.getOne(key, clazz);
 
-        String key = className + ":" + id;
-        var res = RedisCache.getOne(key, clazz);
-
-        if (res.isOK()) {
-            System.out.println("Cached result: " + res.getClass() + " | " +
-                               res);
-            return res;
+        if (cacheRes.isOK()) {
+            System.out.println("Cached result: " + cacheRes.value());
+            return cacheRes;
         }
 
         System.out.println("Cache miss: " + key);
-
+        Result<T> DBRes;
         if (usingHibernate) {
-            return Hibernate.getInstance().getOne(id, clazz);
+            DBRes =  Hibernate.getInstance().getOne(id, clazz);
+        } else {
+            DBRes =  CosmosDB.getInstance().getOne(id, clazz);
         }
-        return CosmosDB.getInstance().getOne(id, clazz);
+
+        if (DBRes.isOK()) {
+            RedisCache.insertOne(key, DBRes.value());
+        }
+
+        return DBRes;
     }
 
     public static <T> Result<T> deleteOne(T obj) {
@@ -76,14 +76,14 @@ public class DB {
         if (usingHibernate) {
             return Hibernate.getInstance().deleteOne(obj);
         }
-        // TODO maybe this should be errorOrResult
+
         return Result.errorOrValue(CosmosDB.getInstance().deleteOne(obj), obj);
     }
 
     public static <T> Result<T> updateOne(T obj) {
         String key = getObjectKey(obj);
         if (key != null)
-            RedisCache.invalidate(key);
+            RedisCache.insertOne(key, obj);
 
         if (usingHibernate) {
             return Hibernate.getInstance().updateOne(obj);

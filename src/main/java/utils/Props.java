@@ -18,15 +18,12 @@ public class Props {
     }
 
     public static void load(String resourceFile) {
-
-        System.out.println("\n\n\nPROPS:"); // TODO remove for submission
         try (var in = Props.class.getClassLoader().getResourceAsStream(
                 resourceFile)) {
             var reader = new InputStreamReader(in);
             var props = new Properties();
             props.load(reader);
             props.forEach((k, v) -> {
-                System.out.println(k.toString() + " | " + v.toString());
                 System.setProperty(k.toString(), v.toString());
             });
             System.getenv().forEach(System::setProperty);

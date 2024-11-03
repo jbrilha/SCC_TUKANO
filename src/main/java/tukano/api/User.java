@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 public class User {
 	
 	@Id
-	private String id; // TODO explain why this is here for CosmosDB
+	private String id;
 	private String pwd;
 	private String email;	
 	private String displayName;

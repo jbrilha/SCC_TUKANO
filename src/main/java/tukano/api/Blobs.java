@@ -7,6 +7,7 @@ import java.util.function.Consumer;
  */
 public interface Blobs {
 	String NAME = "blobs";
+	String STORAGE_ENDPOINT = System.getProperty("BLOBSTORE_URL");
 
 	/**
 	 * Uploads a short video blob resource. Must validate the blobId to ensure it

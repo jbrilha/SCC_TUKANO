@@ -16,7 +16,7 @@ import tukano.impl.storage.BlobStorage;
 public class AzBlobStorage implements BlobStorage {
     private final BlobContainerClient containerClient;
 
-    private static final String BLOBS_CONTAINER_NAME = "shorts";
+    private static final String BLOBS_CONTAINER_NAME = "blobs";
     private static final String storageConnectionString =
         System.getProperty("BlobStoreConnection");
 
@@ -32,7 +32,6 @@ public class AzBlobStorage implements BlobStorage {
         if (path == null)
             return error(BAD_REQUEST);
 
-        // TODO handle conflicts, not founds etc
         try {
             BinaryData data = BinaryData.fromBytes(bytes);
 
@@ -81,7 +80,7 @@ public class AzBlobStorage implements BlobStorage {
         if (path == null)
             return error(BAD_REQUEST);
 
-        // TODO figure out if we need to write to sink from azure
+        // we don't write to sink anymore
 
         // try {
         // // Get client to blob
@@ -128,11 +127,12 @@ public class AzBlobStorage implements BlobStorage {
 
         try {
             containerClient.listBlobs().forEach(blob -> {
-                if(blob.getName().contains(userId)) {
-                    // TODO would this be preferable over an  actual deletion?
+                String blobName = blob.getName();
+                if(blobName.contains(userId)) {
+                    // Would this be preferable over an  actual deletion?
                     // blob.setDeleted(true);
 
-                    BlobClient bc = containerClient.getBlobClient(blob.getName());
+                    BlobClient bc = containerClient.getBlobClient(blobName);
                     bc.delete();
                 }
             });
