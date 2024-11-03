@@ -21,7 +21,7 @@ public class JavaBlobs implements Blobs {
     private static Blobs instance;
     private static Logger Log = Logger.getLogger(JavaBlobs.class.getName());
     private static String triggerFunctionEndpoint =
-        System.getProperty("TRIGGER_FUNC_URL");
+        System.getProperty("BLOBS_TRIGGER_FUNC_URL");
 
     public String baseURI;
     private AzBlobStorage azStorage;

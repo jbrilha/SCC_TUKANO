@@ -17,6 +17,11 @@ import com.azure.cosmos.models.CosmosBatch;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +42,8 @@ import utils.JSON;
 public class JavaShorts implements Shorts {
 
     private static Logger Log = Logger.getLogger(JavaShorts.class.getName());
+    private static String triggerFunctionEndpoint =
+        System.getProperty("USERS_TRIGGER_FUNC_URL");
 
     private static Shorts instance;
 
@@ -355,47 +362,18 @@ public class JavaShorts implements Shorts {
                 hibernate.createQuery(query3, Likes.class).executeUpdate();
             });
         } else {
-            List<Exception> errs = new ArrayList<>();
+            triggerFunction(userId);
 
-            var shortsQuery =
-                format("SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
-            deleteFromContainer(CosmosDB.SHORTS_CONTAINER, shortsQuery,
-                                Short.class, errs);
-
-            var followingQuery =
-                format("SELECT * FROM Following f WHERE f.follower = '%s' "
-                           + "OR f.followee = '%s'",
-                       userId, userId);
-            deleteFromContainer(CosmosDB.FOLLOWING_CONTAINER, followingQuery,
-                                Following.class, errs);
-
-            var likesQuery =
-                format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
-                           + "OR l.userId = '%s'",
-                       userId, userId);
-            deleteFromContainer(CosmosDB.LIKES_CONTAINER, likesQuery,
-                                Likes.class, errs);
-
-            if (errs.isEmpty()) {
-                return Result.ok();
-            }
-
-            return Result.error(ErrorCode.INTERNAL_ERROR);
+            return Result.ok();
         }
     }
 
-    private <T> void deleteFromContainer(String container, String query,
-                                         Class<T> clazz, List<Exception> errs) {
-        DB.sql(container, query, clazz).forEach(item -> {
-            try {
-                CosmosDB.getInstance().deleteOne(item);
-
-            } catch (Exception e) {
-                errs.add(e);
-                Log.warning(format("Failed to delete item with class |%s| " +
-                                   "from container |%s|.",
-                                   clazz, container));
-            }
-        });
+    private void triggerFunction(String userId) {
+        HttpClient.newHttpClient().sendAsync(
+            HttpRequest.newBuilder()
+                .uri(URI.create(triggerFunctionEndpoint + userId))
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.discarding());
     }
 }
