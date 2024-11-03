@@ -26,6 +26,7 @@ public class CosmosDB {
     public static final String USERS_CONTAINER = "users";
     public static final String SHORTS_CONTAINER = "shorts";
     public static final String LIKES_CONTAINER = "likes";
+    public static final String STATS_CONTAINER = "stats";
     public static final String FOLLOWING_CONTAINER = "following";
 
     private static final Map<String, String> containerMap = Map.of(

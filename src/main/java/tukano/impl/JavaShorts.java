@@ -63,7 +63,7 @@ public class JavaShorts implements Shorts {
             var shrt = new Short(shortId, userId, blobUrl);
 
             return errorOrValue(DB.insertOne(shrt),
-                    s -> s.copyWithLikes_And_Token(0));
+                    s -> s.copyWithLikes_Views_And_Token(0, 0));
         });
     }
 
@@ -74,19 +74,24 @@ public class JavaShorts implements Shorts {
         if (shortId == null)
             return error(BAD_REQUEST);
 
-        String query;
+        String likesQuery;
+        String viewsQuery = format(
+                "SELECT * FROM Stats s WHERE s.id = '%s'", shortId);
+
         if (DB.usingHibernate) {
-            query = format(
+            likesQuery = format(
                 "SELECT count(*) FROM Likes l WHERE l.shortId = '%s'", shortId);
         } else {
-            query = format(
+            likesQuery = format(
                 "SELECT VALUE COUNT(1) FROM Likes l WHERE l.shortId = '%s'",
                 shortId);
         }
 
-        var likes = DB.sql(CosmosDB.LIKES_CONTAINER, query, Long.class);
+        var likes = DB.sql(CosmosDB.LIKES_CONTAINER, likesQuery, Long.class);
+        var viewsRes = DB.sql(CosmosDB.STATS_CONTAINER, viewsQuery, JsonNode.class);
+        var views = viewsRes.isEmpty() ? 0 : viewsRes.get(0).get("views").asInt();
         return errorOrValue(getOne(shortId, Short.class),
-                shrt -> shrt.copyWithLikes_And_Token(likes.get(0)));
+                shrt -> shrt.copyWithLikes_Views_And_Token(likes.get(0), views));
     }
 
     @Override
