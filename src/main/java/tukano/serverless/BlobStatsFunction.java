@@ -4,10 +4,12 @@ import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
+import com.azure.cosmos.models.PartitionKey;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.BlobTrigger;
 import com.microsoft.azure.functions.annotation.FunctionName;
+import org.json.JSONObject;
 
 public class BlobStatsFunction {
     private static final String NAME = "name";
@@ -49,33 +51,26 @@ public class BlobStatsFunction {
         context.getLogger().info(String.format("blob : %s, downloaded with %d bytes", blobname, content.length));
 
         try {
-            System.out.println("blobname: " + blobname);
-
-            /*String shortId = blobname.split("\\.")[0]; // Assume que o nome é "123.mp4"
-
-            // Tentar ler o documento de estatísticas existente
             JSONObject statsDoc;
             try {
-                String json = statsContainer.readItem(shortId, new PartitionKey(shortId), String.class)
-                        .getItem();
+                String json = statsContainer.readItem(blobname, new PartitionKey(blobname), String.class).getItem();
                 statsDoc = new JSONObject(json);
             } catch (Exception e) {
-                // Se não existir, criar novo documento
                 statsDoc = new JSONObject()
-                        .put("id", shortId)
+                        .put("id", blobname)
                         .put("viewCount", 0)
-                        .put("createdAt", java.time.Instant.now().toString());
+                        .put("lastUpdated", java.time.Instant.now().toString());
             }
 
-            // Incrementar viewCount
+            context.getLogger().info("Stats document: " + statsDoc.toString());
+
             int currentViews = statsDoc.optInt("viewCount", 0);
             statsDoc.put("viewCount", currentViews + 1)
                     .put("lastUpdated", java.time.Instant.now().toString());
 
-            // Atualizar ou criar documento
             statsContainer.upsertItem(statsDoc.toString());
 
-            context.getLogger().info("Successfully updated view count for short: " + shortId);*/
+            context.getLogger().info("Successfully updated view count for short: " + blobname);
 
         } catch (Exception e) {
             context.getLogger().severe("Error updating view count: " + e.getMessage());
