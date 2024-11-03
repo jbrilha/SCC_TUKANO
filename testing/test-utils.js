@@ -81,7 +81,7 @@ function getBlobIdFromShort(requestParams, response, context, ee, next) {
     const token = url.searchParams.get("token");
     // console.log("token: " + token);
 
-    context.vars.gottenToken = token;
+    context.vars.token = token;
     context.vars.blobId = blobId;
 
     return next();
