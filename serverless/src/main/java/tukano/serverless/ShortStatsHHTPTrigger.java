@@ -8,17 +8,23 @@ import com.azure.cosmos.CosmosException;
 import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.PartitionKey;
 import com.microsoft.azure.functions.ExecutionContext;
+import com.microsoft.azure.functions.HttpMethod;
+import com.microsoft.azure.functions.HttpRequestMessage;
+import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.BlobTrigger;
 import com.microsoft.azure.functions.annotation.FunctionName;
-import java.util.Objects;
+import com.microsoft.azure.functions.annotation.HttpTrigger;
 
-public class ShortStatsFunction {
-    private static final String BLOB_ID = "blobId";
-    private static final String PATH = "shorts/{" + BLOB_ID + "}";
+import java.util.Objects;
+import java.util.Optional;
+
+public class ShortStatsHHTPTrigger {
+    private static final String NAME = "name";
+    private static final String PATH = "shorts/{" + NAME + "}";
     private static final String BLOBS_TRIGGER_NAME =
         "shortStatsFunctionTrigger";
-    private static final String SHORTS_FUNCTION_NAME = "updateShortViews";
+    private static final String SHORTS_FUNCTION_NAME = "updateShortViewsHTTP";
     private static final String DATA_TYPE = "binary";
     private static final String BLOBSTORE_CONNECTION_ENV =
         "BlobStoreConnection";
@@ -28,14 +34,18 @@ public class ShortStatsFunction {
     private static final String DATABASE_NAME =
         System.getenv("COSMOSDB_DATABASE");
     private static final String STATS_CONTAINER = "stats";
+    private static final String BLOB_ID = "blobId";
 
     @FunctionName(SHORTS_FUNCTION_NAME)
     public void updateShortViews(
-        @BlobTrigger(name = BLOBS_TRIGGER_NAME,
-                    dataType = DATA_TYPE,
-                     path = PATH,
-                     connection = BLOBSTORE_CONNECTION_ENV) byte[] content,
-        @BindingName(BLOB_ID) String blobId, ExecutionContext context) {
+        @HttpTrigger(
+            name = "req",
+            methods = {HttpMethod.GET},
+            route = "blobs/{" + BLOB_ID + "}",
+            authLevel = AuthorizationLevel.ANONYMOUS)
+        HttpRequestMessage<Optional<String>> request,
+        @BindingName(BLOB_ID) String blobId,
+        final ExecutionContext context) {
 
         CosmosClient cosmosClient = new CosmosClientBuilder()
                                         .endpoint(COSMOS_ENDPOINT)
@@ -46,8 +56,8 @@ public class ShortStatsFunction {
         CosmosContainer container = db.getContainer(STATS_CONTAINER);
 
         context.getLogger().info(
-            String.format("SHORT_STATS: blob : %s, downloaded with %d bytes\n",
-                          blobId, content.length));
+            String.format("SHORT_STATS: blob : %s\n",
+                          blobId));
 
         try {
             var item = container
@@ -65,7 +75,7 @@ public class ShortStatsFunction {
                 Stats stats = new Stats(blobId);
 
                 container.createItem(stats);
-                context.getLogger().info("Inserted document");
+                context.getLogger().info("Inserted stats for: " + blobId);
 
             } catch (CosmosException ce) {
                 context.getLogger().severe("CosmosException: ");
