@@ -4,17 +4,13 @@ import static java.lang.String.format;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
 import static tukano.api.Result.error;
 
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.function.Consumer;
 import java.util.logging.Logger;
 import tukano.api.Blobs;
 import tukano.api.Result;
-import tukano.impl.rest.TukanoRestServer;
 import tukano.impl.storage.BlobStorage;
 import tukano.impl.storage.FilesystemStorage;
 import tukano.impl.storage.azure.AzBlobStorage;
@@ -24,9 +20,10 @@ import utils.Hex;
 public class JavaBlobs implements Blobs {
     private static Blobs instance;
     private static Logger Log = Logger.getLogger(JavaBlobs.class.getName());
+    private static String triggerFunctionEndpoint =
+        System.getProperty("TRIGGER_FUNC_URL");
 
     public String baseURI;
-    private BlobStorage storage;
     private AzBlobStorage azStorage;
 
     synchronized public static Blobs getInstance() {
@@ -36,10 +33,8 @@ public class JavaBlobs implements Blobs {
     }
 
     private JavaBlobs() {
-        storage = new FilesystemStorage();
         azStorage = new AzBlobStorage();
-        baseURI =
-            String.format("%s/%s/", TukanoRestServer.serverURI, Blobs.NAME);
+        baseURI = String.format("%s/%s/", Blobs.STORAGE_ENDPOINT, Blobs.NAME);
     }
 
     @Override
@@ -52,25 +47,7 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
-        // TODO move "toPath" call to write method of FSStorage
-        // to allow for sending only yhe blobId to that method so that the
-        // interface works the same for CosmosDB
-        // return storage.write(toPath(blobId), bytes);
-
         return azStorage.write(blobId, bytes);
-    }
-
-    private void triggerFunction(String blobId) {
-        System.out.println("\n\nTriggering function for: " + blobId);
-        HttpClient.newHttpClient().sendAsync(
-            HttpRequest.newBuilder()
-                .uri(URI.create(
-                    "https://fun70274northeurope.azurewebsites.net/tukano/blobs/" +
-                    blobId))
-                .GET()
-                .build(),
-            HttpResponse.BodyHandlers.discarding());
-        System.out.println("Triggered function for: " + blobId + "\n\n");
     }
 
     @Override
@@ -84,24 +61,16 @@ public class JavaBlobs implements Blobs {
         triggerFunction(blobId);
 
         return azStorage.read(blobId);
-        // return storage.read(toPath(blobId));
     }
 
-    /*
-     * @Override
-     * // TODO This is completely ignorable I think?
-     * public Result<Void> downloadToSink(String blobId, Consumer<byte[]> sink,
-     * String token) {
-     * Log.info(()
-     * -> format("downloadToSink : blobId = %s, token = %s\n",
-     * blobId, token));
-     *
-     * if (!validBlobId(blobId, token))
-     * return error(FORBIDDEN);
-     *
-     * return storage.read(toPath(blobId), sink);
-     * }
-     */
+    private void triggerFunction(String blobId) {
+        HttpClient.newHttpClient().sendAsync(
+            HttpRequest.newBuilder()
+                .uri(URI.create(triggerFunctionEndpoint + blobId))
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.discarding());
+    }
 
     @Override
     public Result<Void> delete(String blobId, String token) {
@@ -111,7 +80,6 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
-        // return storage.delete(toPath(blobId));
         return azStorage.delete(blobId);
     }
 

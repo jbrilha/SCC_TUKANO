@@ -106,7 +106,6 @@ public class CosmosDB {
             init();
             return Result.ok(supplierFunc.get());
         } catch (CosmosException ce) {
-            System.out.println("\n\nCosmos Exception:");
             ce.printStackTrace();
             return Result.error(errorCodeFromStatus(ce.getStatusCode()));
         } catch (Exception x) {
@@ -121,10 +120,8 @@ public class CosmosDB {
 
         String containerName = "";
         if(obj instanceof Class clazz) {
-            System.out.println("'tis a class: " + clazz);
             containerName = containerMap.get(clazz.getSimpleName());
         } else {
-            System.out.println("'tis an object: " + obj.getClass().getSimpleName());
             containerName = containerMap.get(obj.getClass().getSimpleName());
         }
 
