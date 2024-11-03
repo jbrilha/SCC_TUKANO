@@ -1,9 +1,9 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
-    - name: put
+    - name: post
       duration: 1
       # arrivalRate: 2
       arrivalCount: 6
@@ -21,20 +21,27 @@ config:
       - "displayName"
 
 scenarios:
-- name: "Update users from .csv"
+- name: TuKanoRegister
   flow:
-    - put:
-        url: /users/{{ userId }}
+    - post:
+        url: /users/
         headers:
             Content-Type: application/json
-        qs:
-          pwd: "{{ pwd }}"
         json:
             id: "{{ userId }}" # this parameter is filled from the fields above
             pwd: "{{ pwd }}"
-            email: "updated.{{ email }}"
-            displayName: "UPDATED {{ displayName }}"
+            email: "{{ email }}"
+            displayName: "{{ displayName }}"
+        capture:
+          - regexp: "(.+)"
+            as: "userId"
+    - log: "createUser: {{ userId }}"
+
+    - get:
+        url: /users/{{ userId }}
+        qs:
+          pwd: "{{ pwd }}"
         capture:
           - json: "$"
-            as: "updatedUser"
-    - log: "Updated user: {{ updatedUser }}"
+            as: "gottenUser"
+    - log: "getUser: {{ gottenUser }}"

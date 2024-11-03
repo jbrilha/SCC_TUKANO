@@ -1,5 +1,5 @@
 config:
-  target: https://tukano-7072.azurewebsites.net/rest
+  target: http://localhost:8080/tukano/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:

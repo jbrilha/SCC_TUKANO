@@ -1,9 +1,14 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  processor: ../test-utils.js
   phases:
-    - name: post
+    - name: search
+      duration: 1
+      # arrivalRate: 2
+      arrivalCount: 1
+    - name: create
       duration: 1
       # arrivalRate: 2
       arrivalCount: 6
@@ -21,18 +26,29 @@ config:
       - "displayName"
 
 scenarios:
-- name: "Create users from .csv"
-  flow:
-    - post:
-        url: /users/
-        headers:
+  - name: "Create users from .csv"
+    flow:
+      - post:
+          url: /users/
+          headers:
             Content-Type: application/json
-        json:
+          json:
             id: "{{ userId }}" # this parameter is filled from the fields above
             pwd: "{{ pwd }}"
             email: "{{ email }}"
             displayName: "{{ displayName }}"
-        capture:
-          - regexp: "(.+)"
-            as: "userId"
-    - log: "createUser: {{ userId }}"
+
+    # skill issue maybe but I can't get this to run only once at the end
+  - name: "Search users with query"
+    flow:
+      - get:
+          url: /users
+          count: 1
+          # either this or [ -v  '{"query": "<query>"}' ] when running this test
+          # beforeRequest: "setQuery"
+          qs:
+            query: "{{ query }}"
+          capture:
+            - json: "$"
+              as: "results"
+      - log: "Search: {{ query }}: {{ results }}"

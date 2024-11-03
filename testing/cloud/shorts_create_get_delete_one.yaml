@@ -1,11 +1,11 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
-    - name: "Create and Get Shorts"
+    - name: "Create and Get a single Short"
       duration: 1
-      arrivalCount: 6
+      arrivalCount: 1
   payload:
     path: ../data/users.csv
     order: sequence # selects users sequentially, default is random
@@ -35,3 +35,8 @@ scenarios:
             - json: "$"
               as: "gottenShort"
       - log: "getShort: {{ gottenShort }}"
+
+      - delete:
+          url: /shorts/{{ gottenShort.id }}
+          qs:
+            pwd: "{{ pwd }}"

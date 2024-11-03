@@ -1,37 +1,26 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
     - name: "Create and Get Shorts"
-      duration: 1
-      arrivalCount: 6
+      duration: 15
+      arrivalRate: 10
   payload:
-    path: ../data/users.csv
+    path: ../data/shorts.csv
     order: sequence # selects users sequentially, default is random
     # loadAll: true # load the whole CSV
     skipHeader: true # The first line is a header, so we want to skip it
     delimiter: "," # standard delimiter
     skipEmptyLines: true # not important in our case
     fields:
-      - "userId"
       - "pwd"
+      - "shortId"
 
 scenarios:
   - name: "POST then GET"
     flow:
-      - post:
-          url: /shorts/{{ userId }}
+      - delete:
+          url: /shorts/{{ shortId }}
           qs:
             pwd: "{{ pwd }}"
-          capture:
-            - json: "$"
-              as: "createdShort"
-      - log: "createShort: {{ createdShort }}"
-
-      - get:
-          url: /shorts/{{ createdShort.id }}
-          capture:
-            - json: "$"
-              as: "gottenShort"
-      - log: "getShort: {{ gottenShort }}"

@@ -1,21 +1,19 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   processor: ../test-utils.js
   phases:
     - name: "Warm up" # WARM UP PHASE: duration: 10s, starting with 1 new client/sec up to 5 new clients/sec
-      duration: 10
+      duration: 15
       arrivalRate: 1
-      # rampTo: 5
+      rampTo: 5
     - name: "Main test" # MAIN TESTS: duration: 30s, with 10 new clients/sec. Should be varied depending on scenario.
-      duration: 10
+      duration: 15
       arrivalRate: 5
 
-# this is kinda bad
 scenarios:
-  - name: "Creating random users and shorts"
-    weight: 1
+  - name: "POST then GET"
     flow:
       - post:
           url: /users
@@ -23,24 +21,25 @@ scenarios:
             Content-Type: application/json
             Accept: application/json
           beforeRequest: "uploadRandomizedUser"
-          # need a regex here because neither json nor raw captures work (go figure)
           capture:
             - regexp: "(.+)"
               as: "userId"
       - log: "createUser: {{ userId }}"
 
-      - post:
-          url: /shorts/{{ userId }}
-          qs:
-            pwd: "{{ randomPwd }}" # this is set in uploadRandomizedUser
-          capture:
-            - json: "$"
-              as: "createdShort"
-      - log: "createShort: {{ createdShort }}"
+      - loop:
+        - post:
+            url: /shorts/{{ userId }}
+            qs:
+              pwd: "{{ randomPwd }}"
+            capture:
+              - json: "$"
+                as: "createdShort"
+        - log: "createShort: {{ createdShort }}"
+        count: 5
 
       - get:
-          url: /shorts/{{ createdShort.id }}
+          url: /shorts/{{ userId }}/shorts # yes
           capture:
             - json: "$"
-              as: "gottenShort"
-      - log: "getShort: {{ gottenShort }}"
+              as: "userShorts"
+      - log: "getUserShorts: {{ userShorts }}\n"

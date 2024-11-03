@@ -1,5 +1,5 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   phases:
@@ -20,18 +20,20 @@ config:
 scenarios:
   - name: "POST then GET"
     flow:
-      - post:
-          url: /shorts/{{ userId }}
-          qs:
-            pwd: "{{ pwd }}"
-          capture:
-            - json: "$"
-              as: "createdShort"
-      - log: "createShort: {{ createdShort }}"
+      - loop:
+        - post:
+            url: /shorts/{{ userId }}
+            qs:
+              pwd: "{{ pwd }}"
+            capture:
+              - json: "$"
+                as: "createdShort"
+        - log: "createShort: {{ createdShort }}"
+        count: 5
 
       - get:
-          url: /shorts/{{ createdShort.id }}
+          url: /shorts/{{ userId }}/shorts # yes
           capture:
             - json: "$"
-              as: "gottenShort"
-      - log: "getShort: {{ gottenShort }}"
+              as: "userShorts"
+      - log: "getUserShorts: {{ userShorts }}\n"

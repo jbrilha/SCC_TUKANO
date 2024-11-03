@@ -1,7 +1,8 @@
 config:
-  target: http://localhost:8080/tukano/rest
+  target: https://tukano-7072.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  processor: ../test-utils.js
   phases:
     - name: "Create and Get Shorts"
       duration: 1
@@ -31,7 +32,24 @@ scenarios:
 
       - get:
           url: /shorts/{{ createdShort.id }}
+          afterResponse: "getBlobIdFromShort"
           capture:
             - json: "$"
               as: "gottenShort"
       - log: "getShort: {{ gottenShort }}"
+
+      - post:
+          url: /blobs/{{ blobId }} # set with the function above
+          beforeRequest: "randomBytes"
+          headers:
+            Content-Type: application/octet-stream
+          qs:
+            token: "{{ token }}"
+
+      - get:
+          url: /blobs/{{ blobId }} # set with the function above
+          afterResponse: "processDownload"
+          headers:
+            Accept: application/octet-stream
+          qs:
+            token: "{{ token }}"
