@@ -46,7 +46,6 @@ scenarios:
           qs:
             token: "{{ token }}"
 
-
       - loop: 
         - get:
             url: /blobs/{{ blobId }} # set with the function above
@@ -56,3 +55,12 @@ scenarios:
             qs:
               token: "{{ token }}"
         count: 5
+
+      - think: 3
+
+      - get:
+          url: /shorts/{{ blobId }}
+          capture:
+            - json: "$"
+              as: "downloadedShort"
+      - log: "downloadedShort: {{ downloadedShort }}"
