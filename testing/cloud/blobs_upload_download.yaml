@@ -1,5 +1,5 @@
 config:
-  target: https://tukano70274_72420.azurewebsites.net/rest
+  target: https://tukano7420.azurewebsites.net/rest
   plugins:
     metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
   processor: ../test-utils.js

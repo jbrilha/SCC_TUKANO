@@ -71,8 +71,8 @@
                 <version>2.13.0</version>
                 <configuration>
                     <schemaVersion>v2</schemaVersion>
-                    <resourceGroup>rg70274_72420-northeurope</resourceGroup>
-                    <appName>tukano70274_72420</appName>
+                    <resourceGroup>rg7420-northeurope</resourceGroup>
+                    <appName>tukano7420</appName>
                     <pricingTier>F1</pricingTier>
                     <region>northeurope</region>
                     <runtime>
