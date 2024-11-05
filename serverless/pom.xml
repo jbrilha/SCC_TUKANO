@@ -15,10 +15,10 @@
         <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.36.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
-        <functionAppName>fun70274northeurope</functionAppName>
+        <functionAppName>fun70274_72420northeurope</functionAppName>
         <functionRegion>northeurope</functionRegion>
-        <functionStorageAccountName>sto70274northeurope</functionStorageAccountName>
-        <functionResourceGroup>rg70274-northeurope</functionResourceGroup>
+        <functionStorageAccountName>sto70274_72420northeurope</functionStorageAccountName>
+        <functionResourceGroup>rg70274_72420-northeurope</functionResourceGroup>
     </properties>
 
     <dependencies>
@@ -63,7 +63,7 @@
                 <configuration>
                     <appName>${functionAppName}</appName>
                     <storageAccountName>${functionStorageAccountName}</storageAccountName>
-                    <resourceGroup>rg70274-northeurope</resourceGroup>
+                    <resourceGroup>rg70274_72420-northeurope</resourceGroup>
                     <region>${functionRegion}</region>
                     <disableAppInsights>false</disableAppInsights>
                     <buildJarWithDependencies>false</buildJarWithDependencies>
