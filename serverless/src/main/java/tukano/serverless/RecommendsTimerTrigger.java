@@ -9,6 +9,10 @@ import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.CosmosPatchOperations;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -21,17 +25,25 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import tukano.data.Short;
+
+import static java.lang.String.format;
+
 public class RecommendsTimerTrigger {
     private static final String TIMER_FUNCTION_NAME = "recommendsTimer";
     private static final String TIMER_TRIGGER_NAME = "recommendsTimer";
-    private static final String TIMER_TRIGGER_SCHEDULE = "0 */5 * * * *";
+    private static final String TIMER_TRIGGER_SCHEDULE = "0 */1 * * * *"; // TODO: change to 0 0 0 * * *
 
     private static final String COSMOS_ENDPOINT = System.getenv("COSMOSDB_URL");
     private static final String COSMOS_KEY = System.getenv("COSMOSDB_KEY");
     private static final String DATABASE_NAME = System.getenv("COSMOSDB_DATABASE");
 
+    private static final String BLOBSTORE_CONNECTION_STRING = System.getenv("BlobStoreConnection");
+    private static final String STORAGE_ENDPOINT = System.getenv("BLOBSTORE_URL");
+
     private static final String LIKES_CONTAINER = "likes";
     private static final String STATS_CONTAINER = "stats";
+    private static final String SHORTS_CONTAINER = "shorts";
 
     @FunctionName(TIMER_FUNCTION_NAME)
     public void run( @TimerTrigger(name = TIMER_TRIGGER_NAME, schedule = TIMER_TRIGGER_SCHEDULE)
@@ -43,6 +55,10 @@ public class RecommendsTimerTrigger {
                 .key(COSMOS_KEY)
                 .buildClient();
 
+        BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
+                .connectionString(BLOBSTORE_CONNECTION_STRING)
+                .buildClient();
+
         try {
             CosmosDatabase db = cosmosClient.getDatabase(DATABASE_NAME);
             if(db == null) {
@@ -50,37 +66,83 @@ public class RecommendsTimerTrigger {
                 return;
             }
 
-            //CosmosContainer likesContainer = db.getContainer(LIKES_CONTAINER);
-            //CosmosContainer statsContainer = db.getContainer(STATS_CONTAINER);
+            BlobContainerClient blobContainerClient = blobServiceClient.getBlobContainerClient("blobs");
+            if(blobContainerClient == null) {
+                context.getLogger().severe("Failed to connect to Blob Storage!");
+            }
+
             CosmosContainer likesContainer = validateAndGetContainer(db, LIKES_CONTAINER, context);
             CosmosContainer statsContainer = validateAndGetContainer(db, STATS_CONTAINER, context);
-            if (likesContainer == null || statsContainer == null) return;
-
-            /*String likesQuery = "SELECT c.shortId, COUNT(1) as totalLikes FROM c GROUP BY c.shortId";
-            var likesResult = likesContainer.queryItems(likesQuery, new CosmosQueryRequestOptions(), JsonNode.class);
-
-            var topLikeShorts = likesResult.stream()
-                .sorted((a, b) -> b.get("totalLikes").asInt() - a.get("totalLikes").asInt())
-                .limit(10)
-                .toList();*/
+            CosmosContainer shortsContainer = validateAndGetContainer(db, SHORTS_CONTAINER, context);
+            if (likesContainer == null || statsContainer == null || shortsContainer == null) {
+                context.getLogger().severe("Failed to connect to containers");
+                return;
+            }
 
             List<JsonNode> topLikeShorts = getTopLikedShorts(likesContainer, context);
             if (topLikeShorts.isEmpty()) {
                 context.getLogger().warning("No liked shorts found");
             }
 
-            String viewsQuery = "SELECT TOP 10 * FROM c ORDER BY c.views DESC";
-            var viewsResult = statsContainer.queryItems(viewsQuery, new CosmosQueryRequestOptions(), JsonNode.class);
-            var topViewedShorts = viewsResult.stream().toList();
+            List<JsonNode> topViewedShorts = getTopViewedShorts(statsContainer, context);
+            if (topViewedShorts.isEmpty()) {
+                context.getLogger().warning("No viewed shorts found");
+            }
+
+            for(JsonNode node : topLikeShorts) {
+                context.getLogger().info("Top liked short: " + node.get("shortId").asText());
+            }
+
+            for(JsonNode node : topViewedShorts) {
+                context.getLogger().info("Top viewed short: " + node.get("id").asText());
+            }
 
             var allRecommendedShorts = Stream.concat(
-                    topViewedShorts.stream()
-                            .map(node -> node.get("shortId").asText()),
                     topLikeShorts.stream()
-                            .map(node -> node.get("shortId").asText())
+                            .map(node -> node.get("shortId").asText()),
+                    topViewedShorts.stream()
+                            .map(node -> node.get("id").asText())
+
             ).distinct().toList();
 
-            context.getLogger().info("Recommend Shorts: " + allRecommendedShorts);
+            try {
+                for (String shortId : allRecommendedShorts) {
+                    var newShortId = "tukRecs" + shortId.substring(shortId.indexOf("+"));
+                    var blobUrl = format("%s/%s/%s", STORAGE_ENDPOINT, "blobs", newShortId);
+
+                    context.getLogger().info("Trying to upload blob: " + shortId);
+
+                    BlobClient sourceBlob = blobContainerClient.getBlobClient(shortId);
+                    if(sourceBlob.exists()){
+                        context.getLogger().info("sourceBlob exists! " + shortId);
+                    }
+
+                    BlobClient destinationBlob = blobContainerClient.getBlobClient(newShortId);
+                    if(destinationBlob.exists()){
+                        context.getLogger().info("destinationBlob exists!");
+                    }
+
+                    destinationBlob.beginCopy(sourceBlob.getBlobUrl(), null);
+
+                    context.getLogger().info("Initiated blob copy from " + shortId + " to " + newShortId);
+                    context.getLogger().info("sourceBlob.getBlobUrl(): " + sourceBlob.getBlobUrl());
+                    context.getLogger().info("manual blobUrl: " + blobUrl);
+
+                    var s = new Short(newShortId, "tukRecs", blobUrl);
+                    var item = shortsContainer.createItem(s).getItem();
+
+                    if (item == null) {
+                        context.getLogger().severe("Failed to create short: " + newShortId);
+                        continue;
+                    }
+
+                    context.getLogger().info("Recommended Short: " + newShortId);
+                }
+            } catch (Exception e) {
+                context.getLogger().severe("Error recommending shorts: " + e.getMessage());
+            }
+
+            context.getLogger().info("Recommendation finished");
         } catch (CosmosException ce) {
             context.getLogger().severe("CosmosException: " + ce.getMessage());
         } catch (Exception e) {
@@ -90,8 +152,6 @@ public class RecommendsTimerTrigger {
                 cosmosClient.close();
             }
         }
-
-        context.getLogger().info("Timer is triggered: " + timerInfo);
     }
 
     private CosmosContainer validateAndGetContainer(CosmosDatabase db, String containerName, ExecutionContext context) {
@@ -109,10 +169,21 @@ public class RecommendsTimerTrigger {
             var result = container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
             return result.stream()
                     .sorted((a, b) -> b.get("totalLikes").asInt() - a.get("totalLikes").asInt())
-                    .limit(10)
+                    .limit(5)
                     .toList();
         } catch (Exception e) {
             context.getLogger().severe("Error querying likes: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<JsonNode> getTopViewedShorts(CosmosContainer container, ExecutionContext context) {
+        try {
+            String query = "SELECT TOP 5 * FROM c ORDER BY c.views DESC";
+            var result = container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
+            return result.stream().toList();
+        } catch (Exception e) {
+            context.getLogger().severe("Error querying views: " + e.getMessage());
             return Collections.emptyList();
         }
     }
