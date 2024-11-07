@@ -4,7 +4,10 @@
     <groupId>scc2425</groupId>
     <artifactId>tukano</artifactId>
     <version>1</version>
-    <packaging>war</packaging>
+    <packaging>pom</packaging>
+<modules>
+    <module>serverless</module>
+</modules>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <authors>70274-72420</authors>

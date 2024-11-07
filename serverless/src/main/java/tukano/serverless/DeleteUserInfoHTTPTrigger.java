@@ -1,16 +1,18 @@
 package tukano.serverless;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Stack;
+
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.CosmosException;
-import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.CosmosPatchOperations;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -18,16 +20,11 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-
-import tukano.data.User;
-import tukano.data.Likes;
 import tukano.data.Following;
+import tukano.data.Likes;
 import tukano.data.Short;
 
 public class DeleteUserInfoHTTPTrigger {
@@ -51,6 +48,7 @@ public class DeleteUserInfoHTTPTrigger {
     private static final boolean Redis_USE_TLS = true;
 
     private static JedisPool jedisPool;
+    private static CosmosDatabase db;
 
     @FunctionName(SHORTS_FUNCTION_NAME)
     public void
@@ -67,32 +65,34 @@ public class DeleteUserInfoHTTPTrigger {
                                         .buildClient();
 
         try {
-            CosmosDatabase db = cosmosClient.getDatabase(DATABASE_NAME);
+            db = cosmosClient.getDatabase(DATABASE_NAME);
             CosmosContainer shortsContainer = db.getContainer(SHORTS_CONTAINER);
             CosmosContainer followingContainer =
                 db.getContainer(FOLLOWING_CONTAINER);
             CosmosContainer likesContainer = db.getContainer(LIKES_CONTAINER);
 
             List<Exception> errs = new ArrayList<>();
+            Stack<String> shortIds = new Stack<>();
 
             var shortsQuery = String.format(
                 "SELECT * FROM Shorts s WHERE s.ownerId = '%s'", userId);
             deleteFromContainer(context, shortsContainer, shortsQuery,
-                                Short.class, errs);
+                                Short.class, shortIds, errs);
+            clearShortsInfo(context, shortIds);
 
             var followingQuery = String.format(
                 "SELECT * FROM Following f WHERE f.follower = '%s' "
                     + "OR f.followee = '%s'",
                 userId, userId);
             deleteFromContainer(context, followingContainer, followingQuery,
-                                Following.class, errs);
+                                Following.class, shortIds, errs);
 
             var likesQuery =
                 String.format("SELECT * FROM Likes l WHERE l.ownerId = '%s' "
                                   + "OR l.userId = '%s'",
                               userId, userId);
             deleteFromContainer(context, likesContainer, likesQuery,
-                                Likes.class, errs);
+                                Likes.class, shortIds, errs);
 
             if (!errs.isEmpty()) {
                 context.getLogger().warning(
@@ -110,6 +110,26 @@ public class DeleteUserInfoHTTPTrigger {
         } finally {
             if (cosmosClient != null) {
                 cosmosClient.close();
+            }
+        }
+    }
+
+    private void clearShortsInfo(ExecutionContext context, Stack<String> ids) {
+        CosmosContainer statsContainer = db.getContainer(STATS_CONTAINER);
+        while(!ids.isEmpty()) {
+            String shortId = ids.pop();
+            String key = "short:" + shortId;
+
+            statsContainer.deleteItem(shortId, new PartitionKey(shortId), new CosmosItemRequestOptions());
+
+            try (var jedis = getCachePool().getResource()) {
+                context.getLogger().info(
+                    String.format("Redis deletion: %s", key));
+
+                jedis.del(key);
+            } catch (Exception e) {
+                context.getLogger().warning(String.format(
+                    "Redis exception %s: %s", key, e.getMessage()));
             }
         }
     }
@@ -135,22 +155,14 @@ public class DeleteUserInfoHTTPTrigger {
     private <T> void deleteFromContainer(ExecutionContext context,
                                          CosmosContainer container,
                                          String query, Class<T> clazz,
+                                         Stack<String> shortIds,
                                          List<Exception> errs) {
         container.queryItems(query, new CosmosQueryRequestOptions(), clazz)
             .forEach(item -> {
                 try {
                     if (container.getId().equals(SHORTS_CONTAINER)) {
-                        Short s = (Short) item;
-                        String key = "short:" + s.getShortId();
-
-                        try (var jedis = getCachePool().getResource()) {
-                        context.getLogger().info( String.format("Redis deletion: %s", key));
-
-                            jedis.del(key);
-                        } catch (Exception e) {
-                        context.getLogger().warning(
-                            String.format("Redis exception %s: %s", key, e.getMessage()));
-                        }
+                        Short s = (Short)item;
+                        shortIds.push(s.getId());
                     }
 
                     container.deleteItem(item, new CosmosItemRequestOptions());
@@ -163,48 +175,4 @@ public class DeleteUserInfoHTTPTrigger {
                 }
             });
     }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class Stats {
-        String id;
-        int views;
-
-        public Stats() {}
-
-        public Stats(String userId) {
-            this.id = userId;
-            this.views = 1;
-        }
-
-        public int getViews() { return views; }
-
-        public void setViews(int views) { this.views = views; }
-
-        public String getId() { return id; }
-
-        public void setId(String id) { this.id = id; }
-
-        @Override
-        public String toString() {
-            return "Stats [id=" + id + ", views=" + views + "]";
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, views);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            Stats other = (Stats)obj;
-            return Objects.equals(id, other.id) && views == other.views;
-        }
-    }
-
 }
