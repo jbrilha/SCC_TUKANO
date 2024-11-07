@@ -1,15 +1,11 @@
 package tukano.serverless;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Stack;
-
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.CosmosException;
+import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
@@ -20,7 +16,10 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Stack;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import tukano.data.Following;
@@ -116,11 +115,21 @@ public class DeleteUserInfoHTTPTrigger {
 
     private void clearShortsInfo(ExecutionContext context, Stack<String> ids) {
         CosmosContainer statsContainer = db.getContainer(STATS_CONTAINER);
-        while(!ids.isEmpty()) {
+        while (!ids.isEmpty()) {
             String shortId = ids.pop();
             String key = "short:" + shortId;
 
-            statsContainer.deleteItem(shortId, new PartitionKey(shortId), new CosmosItemRequestOptions());
+            try {
+                statsContainer.deleteItem(shortId, new PartitionKey(shortId),
+                                          new CosmosItemRequestOptions());
+            } catch (NotFoundException e) {
+                continue;
+
+            } catch (Exception e) {
+                context.getLogger().warning(String.format(
+                    "Cosmos exception deleting short stats %s: %s", shortId,
+                    e.getMessage()));
+            }
 
             try (var jedis = getCachePool().getResource()) {
                 context.getLogger().info(
@@ -171,7 +180,7 @@ public class DeleteUserInfoHTTPTrigger {
                     context.getLogger().warning(
                         String.format("Failed to delete item with class |%s| "
                                           + "from container |%s|.",
-                                      clazz, container));
+                                      clazz, container.getId()));
                 }
             });
     }

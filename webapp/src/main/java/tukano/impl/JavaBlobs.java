@@ -11,8 +11,6 @@ import java.net.http.HttpResponse;
 import java.util.logging.Logger;
 import tukano.api.Blobs;
 import tukano.api.Result;
-import tukano.impl.storage.BlobStorage;
-import tukano.impl.storage.FilesystemStorage;
 import tukano.impl.storage.azure.AzBlobStorage;
 import utils.Hash;
 import utils.Hex;
@@ -39,9 +37,7 @@ public class JavaBlobs implements Blobs {
 
     @Override
     public Result<Void> upload(String blobId, byte[] bytes, String token) {
-        Log.info(
-            ()
-                -> format("upload : blobId = %s, sha256 = %s, token = %s\n",
+        Log.info(() -> format("upload : blobId = %s, sha256 = %s, token = %s\n",
                           blobId, Hex.of(Hash.sha256(bytes)), token));
 
         if (!validBlobId(blobId, token))
