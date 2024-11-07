@@ -9,6 +9,10 @@ import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.CosmosPatchOperations;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.PartitionKey;
+import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
+import com.azure.storage.blob.BlobServiceClient;
+import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -28,11 +32,13 @@ import static java.lang.String.format;
 public class RecommendsTimerTrigger {
     private static final String TIMER_FUNCTION_NAME = "recommendsTimer";
     private static final String TIMER_TRIGGER_NAME = "recommendsTimer";
-    private static final String TIMER_TRIGGER_SCHEDULE = "0 */5 * * * *";
+    private static final String TIMER_TRIGGER_SCHEDULE = "0 */1 * * * *"; // TODO: change to 0 0 0 * * *
 
     private static final String COSMOS_ENDPOINT = System.getenv("COSMOSDB_URL");
     private static final String COSMOS_KEY = System.getenv("COSMOSDB_KEY");
     private static final String DATABASE_NAME = System.getenv("COSMOSDB_DATABASE");
+
+    private static final String BLOBSTORE_CONNECTION_STRING = System.getenv("BlobStoreConnection");
     private static final String STORAGE_ENDPOINT = System.getenv("BLOBSTORE_URL");
 
     private static final String LIKES_CONTAINER = "likes";
@@ -49,11 +55,20 @@ public class RecommendsTimerTrigger {
                 .key(COSMOS_KEY)
                 .buildClient();
 
+        BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
+                .connectionString(BLOBSTORE_CONNECTION_STRING)
+                .buildClient();
+
         try {
             CosmosDatabase db = cosmosClient.getDatabase(DATABASE_NAME);
             if(db == null) {
                 context.getLogger().severe("Failed to connect to database: " + DATABASE_NAME);
                 return;
+            }
+
+            BlobContainerClient blobContainerClient = blobServiceClient.getBlobContainerClient("blobs");
+            if(blobContainerClient == null) {
+                context.getLogger().severe("Failed to connect to Blob Storage!");
             }
 
             CosmosContainer likesContainer = validateAndGetContainer(db, LIKES_CONTAINER, context);
@@ -94,6 +109,25 @@ public class RecommendsTimerTrigger {
                 for (String shortId : allRecommendedShorts) {
                     var newShortId = "tukRecs" + shortId.substring(shortId.indexOf("+"));
                     var blobUrl = format("%s/%s/%s", STORAGE_ENDPOINT, "blobs", newShortId);
+
+                    context.getLogger().info("Trying to upload blob: " + shortId);
+
+                    BlobClient sourceBlob = blobContainerClient.getBlobClient(shortId);
+                    if(sourceBlob.exists()){
+                        context.getLogger().info("sourceBlob exists! " + shortId);
+                    }
+
+                    BlobClient destinationBlob = blobContainerClient.getBlobClient(newShortId);
+                    if(destinationBlob.exists()){
+                        context.getLogger().info("destinationBlob exists!");
+                    }
+
+                    destinationBlob.beginCopy(sourceBlob.getBlobUrl(), null);
+
+                    context.getLogger().info("Initiated blob copy from " + shortId + " to " + newShortId);
+                    context.getLogger().info("sourceBlob.getBlobUrl(): " + sourceBlob.getBlobUrl());
+                    context.getLogger().info("manual blobUrl: " + blobUrl);
+
                     var s = new Short(newShortId, "tukRecs", blobUrl);
                     var item = shortsContainer.createItem(s).getItem();
 
@@ -102,7 +136,7 @@ public class RecommendsTimerTrigger {
                         continue;
                     }
 
-                    context.getLogger().info("Recommend Short: " + newShortId);
+                    context.getLogger().info("Recommended Short: " + newShortId);
                 }
             } catch (Exception e) {
                 context.getLogger().severe("Error recommending shorts: " + e.getMessage());
