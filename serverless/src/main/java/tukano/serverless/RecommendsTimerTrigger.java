@@ -32,7 +32,7 @@ import static java.lang.String.format;
 public class RecommendsTimerTrigger {
     private static final String TIMER_FUNCTION_NAME = "recommendsTimer";
     private static final String TIMER_TRIGGER_NAME = "recommendsTimer";
-    private static final String TIMER_TRIGGER_SCHEDULE = "0 */1 * * * *"; // TODO: change to 0 0 0 * * *
+    private static final String TIMER_TRIGGER_SCHEDULE = "0 0 0 * * *";
 
     private static final String COSMOS_ENDPOINT = System.getenv("COSMOSDB_URL");
     private static final String COSMOS_KEY = System.getenv("COSMOSDB_KEY");
@@ -81,12 +81,12 @@ public class RecommendsTimerTrigger {
 
             List<JsonNode> topLikeShorts = getTopLikedShorts(likesContainer, context);
             if (topLikeShorts.isEmpty()) {
-                context.getLogger().warning("No liked shorts found");
+                context.getLogger().warning("No top liked shorts to recommend");
             }
 
             List<JsonNode> topViewedShorts = getTopViewedShorts(statsContainer, context);
             if (topViewedShorts.isEmpty()) {
-                context.getLogger().warning("No viewed shorts found");
+                context.getLogger().warning("No most viewed shorts to recommend");
             }
 
             for(JsonNode node : topLikeShorts) {
@@ -107,42 +107,45 @@ public class RecommendsTimerTrigger {
 
             try {
                 for (String shortId : allRecommendedShorts) {
-                    var newShortId = "tukRecs" + shortId.substring(shortId.indexOf("+"));
-                    var blobUrl = format("%s/%s/%s", STORAGE_ENDPOINT, "blobs", newShortId);
+                    var newRecommendedShortId = "tukRecs" + shortId.substring(shortId.indexOf("+"));
+                    var originalBlobUrl = format("%s/%s/%s", STORAGE_ENDPOINT, "blobs", shortId);
+                    var newBlobUrl = format("%s/%s/%s", STORAGE_ENDPOINT, "blobs", newRecommendedShortId);
 
                     context.getLogger().info("Trying to upload blob: " + shortId);
 
                     BlobClient sourceBlob = blobContainerClient.getBlobClient(shortId);
-                    if(sourceBlob.exists()){
-                        context.getLogger().info("sourceBlob exists! " + shortId);
-                    }
-
-                    BlobClient destinationBlob = blobContainerClient.getBlobClient(newShortId);
-                    if(destinationBlob.exists()){
-                        context.getLogger().info("destinationBlob exists!");
-                    }
-
-                    destinationBlob.beginCopy(sourceBlob.getBlobUrl(), null);
-
-                    context.getLogger().info("Initiated blob copy from " + shortId + " to " + newShortId);
-                    context.getLogger().info("sourceBlob.getBlobUrl(): " + sourceBlob.getBlobUrl());
-                    context.getLogger().info("manual blobUrl: " + blobUrl);
-
-                    var s = new Short(newShortId, "tukRecs", blobUrl);
-                    var item = shortsContainer.createItem(s).getItem();
-
-                    if (item == null) {
-                        context.getLogger().severe("Failed to create short: " + newShortId);
+                    if (!sourceBlob.exists()) {
+                        context.getLogger().warning("Source blob not found: " + shortId);
                         continue;
                     }
 
-                    context.getLogger().info("Recommended Short: " + newShortId);
+                    BlobClient targetBlob = blobContainerClient.getBlobClient(newRecommendedShortId);
+                    if(!targetBlob.exists()){
+                        context.getLogger().info("Target blob already exists: " + newRecommendedShortId);
+                        continue;
+                    }
+
+                    targetBlob.beginCopy(originalBlobUrl, null);
+
+                    try {
+                        var recommendedShort = new Short(newRecommendedShortId, "tukRecs", newBlobUrl);
+                        var item = shortsContainer.createItem(recommendedShort);
+                        // TODO: add creation validation ?
+                    } catch (CosmosException e){
+                        if(e.getStatusCode() == 409){
+                            context.getLogger().warning("Short already reposted: " + newRecommendedShortId);
+                            continue;
+                        }
+                        continue;
+                    }
+
+                    context.getLogger().info("New Recommended Short: " + newRecommendedShortId);
                 }
             } catch (Exception e) {
                 context.getLogger().severe("Error recommending shorts: " + e.getMessage());
             }
 
-            context.getLogger().info("Recommendation finished");
+            context.getLogger().info("Tukano Recommends finished");
         } catch (CosmosException ce) {
             context.getLogger().severe("CosmosException: " + ce.getMessage());
         } catch (Exception e) {
@@ -172,7 +175,7 @@ public class RecommendsTimerTrigger {
                     .limit(5)
                     .toList();
         } catch (Exception e) {
-            context.getLogger().severe("Error querying likes: " + e.getMessage());
+            context.getLogger().severe("Error querying top liked shorts: " + e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -183,7 +186,7 @@ public class RecommendsTimerTrigger {
             var result = container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
             return result.stream().toList();
         } catch (Exception e) {
-            context.getLogger().severe("Error querying views: " + e.getMessage());
+            context.getLogger().severe("Error querying most viewed shorts: " + e.getMessage());
             return Collections.emptyList();
         }
     }
