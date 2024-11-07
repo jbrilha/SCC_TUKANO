@@ -129,8 +129,12 @@ public class RecommendsTimerTrigger {
 
                     try {
                         var recommendedShort = new Short(newRecommendedShortId, "tukRecs", newBlobUrl);
-                        var item = shortsContainer.createItem(recommendedShort);
-                        // TODO: add creation validation ?
+                        var cosmosShortResponse = shortsContainer.createItem(recommendedShort);
+
+                        if (cosmosShortResponse.getStatusCode() != 201) {
+                            context.getLogger().warning("Short creation failed with status: " + cosmosShortResponse.getStatusCode());
+                            continue;
+                        }
                     } catch (CosmosException e){
                         if(e.getStatusCode() == 409){
                             context.getLogger().warning("Short already reposted: " + newRecommendedShortId);
