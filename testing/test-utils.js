@@ -105,12 +105,54 @@ function processDownload(requestParams, response, context, ee, next) {
     return next();
 }
 
+function beforeReq(requestParams, context, ee, next) {
+    console.log('Context vars:', context.vars);  // This will show all variables
+    console.log('Users data:', context.vars.$users);  // This shows the current CSV row
+    console.log('URL being called:', requestParams.url);  // This shows the final URL
+    return next();
+}
+
+function storeShort(requestParams, response, context, ee, next) {
+    if (!response.body) {
+            console.error('Empty response body');
+            return next();
+        }
+    const short = JSON.parse(response.body);
+    const shortId = short.id;
+
+    fs.appendFileSync('data/shorts.csv', shortId + "\n");
+
+    return next();
+}
+
+function reloadShorts(requestParams, context, ee, next) {
+    try {
+        const shorts = fs.readFileSync('../data/shorts.csv', 'utf8')
+            .split('\n')
+            .filter(line => line.trim() !== '');
+        
+        shorts.shift(); 
+
+        context.vars.shortId = shorts[0];
+
+        console.log('Reloaded shorts:', shorts);
+        console.log('Selected shortId:', context.vars.shortId);
+    } catch (error) {
+        console.error('Error reloading shorts:', error);
+    }
+    
+    return next();
+}
+
 module.exports = {
     randomBytes,
+    storeShort,
     uploadRandomizedUser,
     processCreateResponse,
     captureUserResponse,
     getBlobIdFromShort,
     processDownload,
     setQuery,
+    beforeReq,
+    reloadShorts,
 };
