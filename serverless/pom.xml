@@ -3,8 +3,13 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>pt.unl.fct.di.scc</groupId>
-    <artifactId>scc2425-lab5</artifactId>
+    <groupId>scc2425</groupId>
+    <parent>
+        <groupId>scc2425</groupId>
+        <artifactId>tukano</artifactId>
+        <version>1</version>
+    </parent>
+    <artifactId>serverless</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
@@ -38,6 +43,11 @@
             <version>4.63.3</version>
         </dependency>
         <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <version>12.28.0</version>
+        </dependency>
+        <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
             <version>5.2.0</version>
@@ -45,6 +55,7 @@
 
     </dependencies>
     <build>
+        <sourceDirectory>src</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -59,7 +70,7 @@
             <plugin>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>azure-functions-maven-plugin</artifactId>
-                <version>1.19.0</version>
+                <version>1.36.0</version>
                 <configuration>
                     <appName>${functionAppName}</appName>
                     <storageAccountName>${functionStorageAccountName}</storageAccountName>

@@ -8,6 +8,10 @@ import static tukano.api.Result.errorOrResult;
 import static tukano.api.Result.errorOrValue;
 import static tukano.api.Result.ok;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -20,6 +24,8 @@ import utils.DB;
 public class JavaUsers implements Users {
 
     private static Logger Log = Logger.getLogger(JavaUsers.class.getName());
+    private static String triggerFunctionEndpoint =
+        System.getProperty("TUKRECS_TRIGGER_FUNC_URL");
 
     private static Users instance;
 
@@ -38,7 +44,20 @@ public class JavaUsers implements Users {
         if (badUserInfo(user))
             return error(BAD_REQUEST);
 
-        return errorOrValue(DB.insertOne(user), user.getUserId());
+        return errorOrValue(DB.insertOne(user), u -> {
+            String userId = u.getUserId();
+            triggerFunction(userId);
+            return userId;
+        });
+    }
+
+    private void triggerFunction(String blobId) {
+        HttpClient.newHttpClient().sendAsync(
+            HttpRequest.newBuilder()
+                .uri(URI.create(triggerFunctionEndpoint + blobId))
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.discarding());
     }
 
     @Override

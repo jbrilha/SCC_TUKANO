@@ -15,13 +15,13 @@ import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.BindingName;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.Objects;
 import java.util.Optional;
 
+import tukano.data.Short;
+import tukano.data.Stats;
+
 public class ShortStatsHTTPTrigger {
-    private static final String NAME = "name";
     private static final String SHORTS_FUNCTION_NAME = "updateShortViewsHTTP";
 
     private static final String COSMOS_ENDPOINT = System.getenv("COSMOSDB_URL");
@@ -97,119 +97,4 @@ public class ShortStatsHTTPTrigger {
             }
         }
     }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    static class Stats {
-        String id;
-        int views;
-
-        public Stats() {}
-
-        public Stats(String blobId) {
-            this.id = blobId;
-            this.views = 1;
-        }
-
-        public int getViews() { return views; }
-        public void setViews(int views) { this.views = views; }
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
-        @Override
-        public String toString() {
-            return "Stats [id=" + id + ", views=" + views + "]";
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, views);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null) return false;
-            if (getClass() != obj.getClass()) return false;
-            Stats other = (Stats) obj;
-            return Objects.equals(id, other.id) &&
-                    views == other.views;
-        }
-    }
-
-    static class Short {
-        private String id; // TODO explain why this is here for CosmosDB
-        String ownerId;
-        String blobUrl;
-        long timestamp;
-        int totalLikes;
-
-        public Short() {}
-
-        public Short(String shortId, String ownerId, String blobUrl, long timestamp, int totalLikes) {
-            super();
-            this.id = shortId;
-            this.ownerId = ownerId;
-            this.blobUrl = blobUrl;
-            this.timestamp = timestamp;
-            this.totalLikes = totalLikes;
-        }
-
-        public Short(String shortId, String ownerId, String blobUrl) {
-            this( shortId, ownerId, blobUrl, System.currentTimeMillis(), 0);
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        public String getShortId() {
-            return id;
-        }
-
-        public void setShortId(String shortId) {
-            this.id = shortId;
-        }
-
-        public String getOwnerId() {
-            return ownerId;
-        }
-
-        public void setOwnerId(String ownerId) {
-            this.ownerId = ownerId;
-        }
-
-        public String getBlobUrl() {
-            return blobUrl;
-        }
-
-        public void setBlobUrl(String blobUrl) {
-            this.blobUrl = blobUrl;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-
-        public void setTimestamp(long timestamp) {
-            this.timestamp = timestamp;
-        }
-
-        public int getTotalLikes() {
-            return totalLikes;
-        }
-
-        public void setTotalLikes(int totalLikes) {
-            this.totalLikes = totalLikes;
-        }
-
-        @Override
-        public String toString() {
-            return "Short [id=" + id + ", ownerId=" + ownerId + ", blobUrl=" + blobUrl + ", timestamp="
-                    + timestamp + ", totalLikes=" + totalLikes + "]";
-        }
-    }
-
 }
