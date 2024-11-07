@@ -1,0 +1,39 @@
+config:
+  target: http://localhost:8080/tukano/rest
+  plugins:
+    metrics-by-endpoint: {} # Used to get metrics for each endpoint individually.
+  processor: ../test-utils.js
+  phases:
+    - name: "Create and Get Shorts"
+      duration: 1
+      arrivalCount: 24
+  payload:
+    - path: ../data/users.csv
+      order: sequence # selects users sequentially, default is random
+      # loadAll: true # load the whole CSV
+      skipHeader: true # The first line is a header, so we want to skip it
+      delimiter: "," # standard delimiter
+      skipEmptyLines: true # not important in our case
+      fields:
+        - "userId"
+        - "pwd"
+
+    - path: ../data/shorts.csv
+      order: sequence # selects users sequentially, default is random
+      # loadAll: true # load the whole CSV
+      skipHeader: true # The first line is a header, so we want to skip it
+      delimiter: "," # standard delimiter
+      skipEmptyLines: true # not important in our case
+      fields:
+        - "shortId"
+
+scenarios:
+  - name: "POST then GET"
+    flow:
+      - post:
+          url: /shorts/{{ shortId }}/{{ userId }}/likes
+          headers:
+            Content-Type: application/json
+          body: "true"
+          qs:
+            pwd: "{{ pwd }}"
