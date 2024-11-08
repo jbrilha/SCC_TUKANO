@@ -1,0 +1,112 @@
+config:
+  target: https://tukano7420.azurewebsites.net/rest
+  plugins:
+    metrics-by-endpoint:
+  processor: ../test-utils.js
+  phases:
+    - name: "Warm up"
+      duration: 10
+      arrivalRate: 1
+      rampTo: 5
+    - name: "Main test"
+      duration: 20
+      arrivalRate: 10
+  payload:
+    path: ../data/users.csv
+    order: sequence # selects users sequentially, default is random
+    # loadAll: true # load the whole CSV
+    skipHeader: true # The first line is a header, so we want to skip it
+    delimiter: "," # standard delimiter
+    skipEmptyLines: true # not important in our case
+    fields:
+      - "userId"
+      - "pwd"
+
+scenarios:
+  - name: "Creating users, some shorts and uploading blobs"
+    flow:
+      - post:
+          url: /users
+          afterResponse: "storeUser"
+          headers:
+            Content-Type: application/json
+            Accept: application/json
+          beforeRequest: "uploadRandomizedUser"
+          capture:
+            - regexp: "(.+)"
+              as: "randUserId"
+      - log: "createUser: {{ randUserId }}"
+
+      - loop:
+        - post:
+            url: /shorts/{{ randUserId }}
+            afterResponse:
+              - "storeShort"
+              - "getBlobIdFromShort"
+            qs:
+              pwd: "password"
+            capture:
+              - json: "$"
+                as: "createdShort"
+        - log: "createShort: {{ createdShort }}"
+
+        - post:
+            url: /blobs/{{ blobId }}
+            beforeRequest: "randomBytes"
+            headers:
+              Content-Type: application/octet-stream
+            qs:
+              token: "{{ token }}"
+        count: 2
+
+  - name: "Creating users, shorts, giving some likes and follows"
+    flow:
+      - post:
+          url: /users
+          afterResponse: "storeUser"
+          headers:
+            Content-Type: application/json
+            Accept: application/json
+          beforeRequest: "uploadRandomizedUser"
+          capture:
+            - regexp: "(.+)"
+              as: "randUserId"
+      - log: "createUser: {{ randUserId }}"
+
+      - post:
+          url: /shorts/{{ randUserId }}/{{ userId }}/followers
+          headers:
+            Content-Type: application/json
+          body: "true"
+          qs:
+            pwd: "password"
+
+      - loop:
+        - post:
+            url: /shorts/{{ randUserId }}
+            afterResponse:
+              - "storeShort"
+              - "getBlobIdFromShort"
+            qs:
+              pwd: "password"
+            capture:
+              - json: "$"
+                as: "createdShort"
+        - log: "createShort: {{ createdShort }}"
+
+        - post:
+            url: /blobs/{{ blobId }}
+            beforeRequest: "randomBytes"
+            headers:
+              Content-Type: application/octet-stream
+            qs:
+              token: "{{ token }}"
+        count: 2
+
+      - post:
+          url: /shorts/{{ blobId }}/{{ randUserId }}/likes
+          headers:
+            Content-Type: application/json
+          body: "true"
+          qs:
+            pwd: "password"
