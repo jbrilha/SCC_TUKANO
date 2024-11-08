@@ -8,7 +8,7 @@
         <!-- <property name="connection.username">sa</property> -->
         <!-- <property name="connection.password"></property> -->
         <!-- JDBC connection pool settings ... using built-in test pool -->
-        <property name="connection.pool_size">20</property>
+        <!-- <property name="connection.pool_size">50</property> -->
         <!-- http://jvmhub.com/2014/10/22/hibernate-and-postgresql-configuration-with-maven/ -->
         <!-- optimizes hibernate for Postgres-->
         <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
@@ -20,12 +20,12 @@
         <property name="hbm2ddl.auto">validate</property>
         <!-- dbcp connection pool configuration -->
         <property name="hibernate.dbcp.initialSize">2</property>
-        <property name="hibernate.dbcp.maxTotal">20</property>
+        <property name="hibernate.dbcp.maxTotal">100</property>
         <property name="hibernate.dbcp.maxIdle">3</property>
         <property name="hibernate.dbcp.minIdle">1</property>
         <property name="hibernate.dbcp.maxWaitMillis">10000</property>
 
-        <property name="hibernate.dbcp.removeAbandonedTimeout">120</property>
+        <property name="hibernate.dbcp.removeAbandonedTimeout">60</property>
         <property name="hibernate.dbcp.removeAbandonedOnBorrow">true</property>
         <property name="hibernate.dbcp.removeAbandonedOnMaintenance">true</property>
 
