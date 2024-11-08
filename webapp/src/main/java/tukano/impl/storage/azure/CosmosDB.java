@@ -45,8 +45,8 @@ public class CosmosDB {
         CosmosClient client = new CosmosClientBuilder()
                                   .endpoint(CONNECTION_URL)
                                   .key(DB_KEY)
-                                  // .directMode()
-                                  .gatewayMode() // TODO god damn it
+                                  .directMode()
+                                  // .gatewayMode()
                                   .consistencyLevel(ConsistencyLevel.SESSION)
                                   .connectionSharingAcrossClientsEnabled(true)
                                   .contentResponseOnWriteEnabled(true)
