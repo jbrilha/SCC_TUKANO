@@ -50,8 +50,7 @@ public class DeleteUserInfoHTTPTrigger {
     private static CosmosDatabase db;
 
     @FunctionName(SHORTS_FUNCTION_NAME)
-    public void
-    updateShortViews(@HttpTrigger(name = "req", methods = {HttpMethod.GET},
+    public void run(@HttpTrigger(name = "req", methods = {HttpMethod.GET},
                                   route = "users/{" + USER_ID + "}",
                                   authLevel = AuthorizationLevel.ANONYMOUS)
                      HttpRequestMessage<Optional<String>> request,
