@@ -1,5 +1,6 @@
 package tukano.serverless;
 
+import com.azure.cosmos.ConsistencyLevel;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
@@ -45,6 +46,7 @@ public class ShortStatsHTTPTrigger {
         CosmosClient cosmosClient = new CosmosClientBuilder()
                 .endpoint(COSMOS_ENDPOINT)
                 .key(COSMOS_KEY)
+                .directMode()
                 .buildClient();
 
         try {
