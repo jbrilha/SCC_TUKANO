@@ -1,0 +1,101 @@
+config:
+  target: https://tukano7420.azurewebsites.net/rest
+  plugins:
+    metrics-by-endpoint:
+  processor: ../test-utils.js
+  phases:
+    - name: "Warm up"
+      duration: 10
+      arrivalRate: 1
+      rampTo: 5
+    - name: "Main test"
+      duration: 20
+      arrivalRate: 10
+  payload:
+    - path: ../data/randUsers.csv
+      order: sequence # selects users sequentially, default is random
+      # loadAll: true # load the whole CSV
+      skipHeader: true # The first line is a header, so we want to skip it
+      delimiter: "," # standard delimiter
+      skipEmptyLines: true # not important in our case
+      fields:
+        - "userId"
+
+    - path: ../data/shorts.csv
+      order: sequence # selects users sequentially, default is random
+      # loadAll: true # load the whole CSV
+      skipHeader: true # The first line is a header, so we want to skip it
+      delimiter: "," # standard delimiter
+      skipEmptyLines: true # not important in our case
+      fields:
+        - "shortId"
+
+scenarios:
+  - name: "Getting users' feed and checking likes"
+    flow:
+      - get:
+          url: /shorts/{{ userId }}/feed
+          qs:
+            pwd: "password"
+          capture:
+            - json: "$"
+              as: "feed"
+      - log: "getFeed ({{ userId }}): {{ feed }}"
+
+      - get:
+          url: /shorts/{{ shortId }}/likes
+          qs:
+            pwd: "password"
+          capture:
+            - json: "$"
+              as: "likes"
+      - log: "getLikes after: {{ likes }}"
+
+  - name: "Checking users' shorts and followers"
+    flow:
+      - get:
+          url: /shorts/{{ userId }}/shorts # yes
+          capture:
+            - json: "$"
+              as: "userShorts"
+      - log: "getUserShorts: {{ userShorts }}\n"
+
+      - get:
+          url: /shorts/{{ userId }}/followers
+          qs:
+            pwd: "password"
+          capture:
+            - json: "$"
+              as: "followers"
+      - log: "getFollowers for {{ userId }}: {{ followers }}"
+
+  - name: "Searching for users"
+    flow:
+      - get:
+          url: /users
+          # either this or [ -v  '{"query": "<query>"}' ] when running this test
+          # beforeRequest: "setQuery"
+          qs:
+            query: "h"
+          capture:
+            - json: "$"
+              as: "results"
+      - log: "Search: {{ query }}: {{ results }}"
+
+  - name: "Getting shorts and downloading blobs"
+    flow:
+      - get:
+          url: /shorts/{{ shortId }}
+          afterResponse: "getBlobIdFromShort"
+          capture:
+            - json: "$"
+              as: "gottenShort"
+      - log: "getShort: {{ gottenShort }}"
+
+      - get:
+          url: /blobs/{{ blobId }} # set with the function above
+          afterResponse: "processDownload"
+          headers:
+            Accept: application/octet-stream
+          qs:
+            token: "{{ token }}"

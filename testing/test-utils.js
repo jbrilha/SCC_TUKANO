@@ -29,7 +29,8 @@ function randomPassword(pass_len) {
 
 function uploadRandomizedUser(requestParams, context, ee, next) {
     let username = randomUsername(10);
-    let pword = randomPassword(15);
+    // let pword = randomPassword(15);
+    let pword = "password";
     let email = username + "@campus.fct.unl.pt";
     let displayName = username.toUpperCase();
 
@@ -70,7 +71,10 @@ function captureUserResponse(requestParams, response, context, ee, next) {
 }
 
 function getBlobIdFromShort(requestParams, response, context, ee, next) {
-    const short = JSON.parse(response.body);
+    const body = response.body;
+    if (body == null || body == "") return next();
+
+    const short = JSON.parse(body);
 
     const url = new URL(short.blobUrl);
     // console.log("\nblobUrl: " + url);
@@ -106,47 +110,61 @@ function processDownload(requestParams, response, context, ee, next) {
 }
 
 function beforeReq(requestParams, context, ee, next) {
-    console.log('Context vars:', context.vars);  // This will show all variables
-    console.log('Users data:', context.vars.$users);  // This shows the current CSV row
-    console.log('URL being called:', requestParams.url);  // This shows the final URL
+    console.log("Context vars:", context.vars); // This will show all variables
+    console.log("Users data:", context.vars.$users); // This shows the current CSV row
+    console.log("URL being called:", requestParams.url); // This shows the final URL
     return next();
 }
 
 function storeShort(requestParams, response, context, ee, next) {
     if (!response.body) {
-            console.error('Empty response body');
-            return next();
-        }
+        console.error("Empty response body");
+        return next();
+    }
     const short = JSON.parse(response.body);
     const shortId = short.id;
 
-    fs.appendFileSync('data/shorts.csv', shortId + "\n");
+    fs.appendFileSync("data/shorts.csv", shortId + "\n");
+
+    return next();
+}
+
+function storeUser(requestParams, response, context, ee, next) {
+    if (!response.body) {
+            console.error('Empty response body');
+            return next();
+        }
+    const userId = response.body;
+
+    fs.appendFileSync('data/randUsers.csv', userId + "\n");
 
     return next();
 }
 
 function reloadShorts(requestParams, context, ee, next) {
     try {
-        const shorts = fs.readFileSync('../data/shorts.csv', 'utf8')
-            .split('\n')
-            .filter(line => line.trim() !== '');
-        
-        shorts.shift(); 
+        const shorts = fs
+            .readFileSync("../data/shorts.csv", "utf8")
+            .split("\n")
+            .filter((line) => line.trim() !== "");
+
+        shorts.shift();
 
         context.vars.shortId = shorts[0];
 
-        console.log('Reloaded shorts:', shorts);
-        console.log('Selected shortId:', context.vars.shortId);
+        console.log("Reloaded shorts:", shorts);
+        console.log("Selected shortId:", context.vars.shortId);
     } catch (error) {
-        console.error('Error reloading shorts:', error);
+        console.error("Error reloading shorts:", error);
     }
-    
+
     return next();
 }
 
 module.exports = {
     randomBytes,
     storeShort,
+    storeUser,
     uploadRandomizedUser,
     processCreateResponse,
     captureUserResponse,
