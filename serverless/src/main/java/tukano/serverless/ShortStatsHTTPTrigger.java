@@ -33,7 +33,7 @@ public class ShortStatsHTTPTrigger {
     private static final String BLOB_ID = "blobId";
 
     @FunctionName(SHORTS_FUNCTION_NAME)
-    public void updateShortViews(
+    public void run(
             @HttpTrigger(
                     name = "req",
                     methods = {HttpMethod.GET},

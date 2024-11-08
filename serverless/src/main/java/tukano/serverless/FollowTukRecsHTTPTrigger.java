@@ -28,8 +28,7 @@ public class FollowTukRecsHTTPTrigger {
     private static final String USER_ID = "userId";
 
     @FunctionName(SHORTS_FUNCTION_NAME)
-    public void
-    updateShortViews(@HttpTrigger(name = "req", methods = {HttpMethod.GET},
+    public void run(@HttpTrigger(name = "req", methods = {HttpMethod.GET},
                                   route = "tukRecs/{" + USER_ID + "}",
                                   authLevel = AuthorizationLevel.ANONYMOUS)
                      HttpRequestMessage<Optional<String>> request,
