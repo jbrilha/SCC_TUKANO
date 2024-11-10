@@ -1,6 +1,21 @@
 const crypto = require("crypto");
 const fs = require("fs");
 
+module.exports = {
+    processFeed,
+    randomBytes,
+    storeShort,
+    storeUser,
+    uploadRandomizedUser,
+    processCreateResponse,
+    captureUserResponse,
+    getBlobIdFromShort,
+    processDownload,
+    setQuery,
+    beforeReq,
+    reloadShorts,
+};
+
 function randomUsername(char_limit) {
     const letters = "abcdefghijklmnopqrstuvwxyz";
     let username = "";
@@ -74,21 +89,25 @@ function getBlobIdFromShort(requestParams, response, context, ee, next) {
     const body = response.body;
     if (body == null || body == "") return next();
 
-    const short = JSON.parse(body);
+    try {
+        const short = JSON.parse(body);
 
-    const url = new URL(short.blobUrl);
-    // console.log("\nblobUrl: " + url);
+        const url = new URL(short.blobUrl);
+        // console.log("\nblobUrl: " + url);
 
-    const blobId = url.pathname.split("/").pop();
-    // console.log("blobId: " + blobId);
+        const blobId = url.pathname.split("/").pop();
+        // console.log("blobId: " + blobId);
 
-    const token = url.searchParams.get("token");
-    // console.log("token: " + token);
+        const token = url.searchParams.get("token");
+        // console.log("token: " + token);
 
-    context.vars.token = token;
-    context.vars.blobId = blobId;
+        context.vars.token = token;
+        context.vars.blobId = blobId;
 
-    return next();
+        return next();
+    } catch (e) {
+        return next();
+    }
 }
 
 function randomBytes(requestParams, context, ee, next) {
@@ -109,6 +128,36 @@ function processDownload(requestParams, response, context, ee, next) {
     return next();
 }
 
+function processFeed(requestParams, response, context, ee, next) {
+    if (!response.body) {
+        console.error("PF: Empty response body");
+        context.vars.feedShort = "1";
+        return next();
+    }
+
+    try {
+    const feed = JSON.parse(response.body);
+
+    if (!Array.isArray(feed)) {
+            console.error("feed not an array");
+            return next();
+        }
+    if (feed.length === 0) {
+            console.error("feed is empty");
+            return next();
+        }
+
+
+    var random = Math.floor(Math.random() * feed.length)
+    context.vars['feedShort'] = feed[random];
+
+    return next();
+    } catch (error) {
+        console.error("Error reloading shorts:", error);
+        return next();
+    }
+}
+
 function beforeReq(requestParams, context, ee, next) {
     console.log("Context vars:", context.vars); // This will show all variables
     console.log("Users data:", context.vars.$users); // This shows the current CSV row
@@ -118,7 +167,7 @@ function beforeReq(requestParams, context, ee, next) {
 
 function storeShort(requestParams, response, context, ee, next) {
     if (!response.body) {
-        console.error("Empty response body");
+        console.error("SS: Empty response body");
         return next();
     }
     const short = JSON.parse(response.body);
@@ -131,12 +180,12 @@ function storeShort(requestParams, response, context, ee, next) {
 
 function storeUser(requestParams, response, context, ee, next) {
     if (!response.body) {
-            console.error('Empty response body');
-            return next();
-        }
+        console.error("SU: Empty response body");
+        return next();
+    }
     const userId = response.body;
 
-    fs.appendFileSync('data/randUsers.csv', userId + "\n");
+    fs.appendFileSync("data/randUsers.csv", userId + "\n");
 
     return next();
 }
@@ -160,17 +209,3 @@ function reloadShorts(requestParams, context, ee, next) {
 
     return next();
 }
-
-module.exports = {
-    randomBytes,
-    storeShort,
-    storeUser,
-    uploadRandomizedUser,
-    processCreateResponse,
-    captureUserResponse,
-    getBlobIdFromShort,
-    processDownload,
-    setQuery,
-    beforeReq,
-    reloadShorts,
-};

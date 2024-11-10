@@ -1,0 +1,134 @@
+config:
+  target: https://tukano7420.azurewebsites.net/rest
+  plugins:
+    metrics-by-endpoint:
+  processor: ../test-utils.js
+  phases:
+    - name: "Warm up"
+      duration: 10
+      arrivalRate: 1
+      rampTo: 5
+    - name: "Main test"
+      duration: 30
+      arrivalRate: 10
+  payload:
+    - path: ../data/users.csv
+      order: sequence # selects users sequentially, default is random
+      # loadAll: true # load the whole CSV
+      skipHeader: true # The first line is a header, so we want to skip it
+      delimiter: "," # standard delimiter
+      skipEmptyLines: true # not important in our case
+      fields:
+        - "userId"
+        - "email"
+        - "pwd"
+        - "displayName"
+    #
+    # - path: ../data/shorts.csv
+    #   order: sequence # selects users sequentially, default is random
+    #   # loadAll: true # load the whole CSV
+    #   skipHeader: true # The first line is a header, so we want to skip it
+    #   delimiter: "," # standard delimiter
+    #   skipEmptyLines: true # not important in our case
+    #   fields:
+    #     - "shortId"
+
+scenarios:
+  - name: "Creating users, some shorts and uploading blobs"
+    flow:
+      - loop:
+          - post:
+              url: /users
+              # afterResponse: "storeUser"
+              headers:
+                Content-Type: application/json
+                Accept: application/json
+              beforeRequest: "uploadRandomizedUser"
+              capture:
+                - regexp: "(.+)"
+                  as: "_userId"
+          - log: "createUser: {{ _userId }}"
+
+          - post:
+              url: /shorts/{{ userId }}/{{ _userId }}/followers
+              headers:
+                Content-Type: application/json
+              body: "true"
+              qs:
+                pwd: "{{ pwd }}"
+
+          - post:
+              url: /shorts/{{ _userId }}
+              afterResponse:
+                # - "storeShort"
+                - "getBlobIdFromShort"
+              qs:
+                pwd: "password"
+              capture:
+                - json: "$"
+                  as: "createdShort"
+          - log: "createShort: {{ createdShort }}"
+
+          - post:
+              url: /blobs/{{ blobId }}
+              beforeRequest: "randomBytes"
+              headers:
+                Content-Type: application/octet-stream
+              qs:
+                token: "{{ token }}"
+        count: 3
+
+      - get:
+          url: /shorts/{{ userId }}/feed
+          afterResponse: "processFeed"
+          headers:
+            Accept: application/json
+          qs:
+            pwd: "{{ pwd }}"
+          capture:
+            - json: "$"
+              as: "feed"
+      - log: "getFeed ({{ userId }}): {{ feed }}"
+
+      - post:
+          url: /shorts/{{ feedShort }}/{{ userId }}/likes
+          headers:
+            Content-Type: application/json
+          body: "true"
+          qs:
+            pwd: "{{ pwd }}"
+
+      - get:
+          url: /shorts/{{ feedShort }}
+          afterResponse: "getBlobIdFromShort"
+          capture:
+            - json: "$"
+              as: "gottenShort"
+      - log: "getShort | {{ feedShort}}: {{ gottenShort }}"
+
+      - loop:
+          - get:
+              url: /blobs/{{ blobId }}
+              afterResponse: "processDownload"
+              headers:
+                Accept: application/octet-stream
+              qs:
+                token: "{{ token }}"
+        count: 3
+
+      - get:
+          url: /shorts/{{ feedShort }}/likes
+          qs:
+            pwd: "password"
+          capture:
+            - json: "$"
+              as: "likes"
+      - log: "getLikes after: {{ likes }}"
+
+      - get:
+          url: /shorts/{{ feedShort }}
+          afterResponse: "getBlobIdFromShort"
+          capture:
+            - json: "$"
+              as: "viewedShort"
+      - log: "viewedShort: {{ viewedShort }}"
