@@ -74,7 +74,7 @@ public class Authentication {
 		if (cookie == null )
 			throw new NotAuthorizedException("No session initialized");
 		
-		var session = FakeRedisLayer.getInstance().getSession( cookie.getValue());
+		var session = RedisCache.getSession( cookie.getValue());
 		if( session == null )
 			throw new NotAuthorizedException("No valid session initialized");
 			

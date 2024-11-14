@@ -73,6 +73,10 @@ public class RedisCache {
         return Result.ok();
     }
 
+    public static Session getSession(String cookie_val) {
+        return new Session("", "");
+    }
+
     public static <T> Result<T> invalidate(String... keys) {
         try (var jedis = RedisCache.getCachePool().getResource()) {
             jedis.del(keys);
