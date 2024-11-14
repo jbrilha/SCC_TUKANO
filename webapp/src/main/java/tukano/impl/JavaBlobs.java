@@ -2,6 +2,7 @@ package tukano.impl;
 
 import static java.lang.String.format;
 import static tukano.api.Result.ErrorCode.FORBIDDEN;
+import static tukano.api.Result.ErrorCode.UNAUTHORIZED;
 import static tukano.api.Result.error;
 
 import java.net.URI;
@@ -11,6 +12,7 @@ import java.net.http.HttpResponse;
 import java.util.logging.Logger;
 import tukano.api.Blobs;
 import tukano.api.Result;
+import tukano.api.rest.Authentication;
 import tukano.impl.storage.azure.AzBlobStorage;
 import utils.Hash;
 import utils.Hex;
@@ -43,6 +45,10 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
+        // no need to check for user existence since token gets validated first
+        if (!validCookie(blobId))
+            return error(UNAUTHORIZED);
+
         return azStorage.write(blobId, bytes);
     }
 
@@ -53,6 +59,9 @@ public class JavaBlobs implements Blobs {
 
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
+
+        if (!validCookie(blobId))
+            return error(UNAUTHORIZED);
 
         triggerFunction(blobId);
 
@@ -76,6 +85,9 @@ public class JavaBlobs implements Blobs {
         if (!validBlobId(blobId, token))
             return error(FORBIDDEN);
 
+        if (!validCookie(blobId))
+            return error(UNAUTHORIZED);
+
         return azStorage.delete(blobId);
     }
 
@@ -88,12 +100,26 @@ public class JavaBlobs implements Blobs {
         if (!Token.isValid(token, userId))
             return error(FORBIDDEN);
 
+        if (!validCookie(userId))
+            return error(UNAUTHORIZED);
+
         return azStorage.deleteAll(userId);
     }
 
     private boolean validBlobId(String blobId, String token) {
         return Token.isValid(token, toURL(blobId));
     }
+
+    private boolean validCookie(String blobId) {
+        try {
+            Authentication.validateSession(blobId.split("+")[0]);
+        } catch (Exception e) {
+            return false;
+        }
+
+        return true;
+    }
+
 
     private String toPath(String blobId) { return blobId.replace("+", "/"); }
 

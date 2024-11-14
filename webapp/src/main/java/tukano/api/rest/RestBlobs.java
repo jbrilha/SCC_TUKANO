@@ -1,6 +1,5 @@
 package tukano.api.rest;
 
-
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -18,6 +17,7 @@ public interface RestBlobs {
 	String BLOB_ID = "blobId";
 	String TOKEN = "token";
 	String BLOBS = "blobs";
+	String COOKIE = "cookie";
 	String USER_ID = "userId";
 
  	@POST
@@ -34,9 +34,9 @@ public interface RestBlobs {
  	
 	@DELETE
 	@Path("/{" + BLOB_ID + "}")
-	void delete(@PathParam(BLOB_ID) String blobId, @QueryParam(TOKEN) String token );		
+	void delete(@PathParam(BLOB_ID) String blobId, @QueryParam(TOKEN) String token);
 
 	@DELETE
 	@Path("/{" + USER_ID + "}/" + BLOBS)
-	void deleteAllBlobs(@PathParam(USER_ID) String userId, @QueryParam(TOKEN) String token );		
+	void deleteAllBlobs(@PathParam(USER_ID) String userId, @QueryParam(TOKEN) String token);
 }
