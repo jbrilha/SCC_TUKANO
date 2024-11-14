@@ -5,6 +5,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import tukano.api.Result;
 import tukano.api.Result.ErrorCode;
+import tukano.api.rest.Session;
 import utils.*;
 
 public class RedisCache {
@@ -66,6 +67,10 @@ public class RedisCache {
             e.printStackTrace();
             return Result.error(ErrorCode.INTERNAL_ERROR);
         }
+    }
+
+    public static <T> Result<T> putSession(Session s) {
+        return Result.ok();
     }
 
     public static <T> Result<T> invalidate(String... keys) {
