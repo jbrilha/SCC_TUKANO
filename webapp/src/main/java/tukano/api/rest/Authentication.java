@@ -24,7 +24,7 @@ public class Authentication {
 	static final String PATH = "login";
 	static final String USER = "username";
 	static final String PWD = "password";
-	static final String COOKIE_KEY = "scc:session";
+	static final String COOKIE_KEY = "tukano:session";
 	static final String LOGIN_PAGE = "login.html";
 	private static final int MAX_COOKIE_AGE = 3600;
 	static final String REDIRECT_TO_AFTER_LOGIN = "/ctrl/version";
@@ -32,7 +32,7 @@ public class Authentication {
 	@POST
 	public Response login( @FormParam(USER) String user, @FormParam(PWD) String password ) {
 		System.out.println("user: " + user + " pwd:" + password );
-		boolean pwdOk = true; // replace with code to check user password
+		boolean pwdOk = true; // TODO replace with code to check user password
 		if (pwdOk) {
 			String uid = UUID.randomUUID().toString();
 			var cookie = new NewCookie.Builder(COOKIE_KEY)
@@ -66,7 +66,7 @@ public class Authentication {
 	
 	static public Session validateSession(String userId) throws NotAuthorizedException {
 		var cookies = RequestCookies.get();
-		return validateSession( cookies.get(COOKIE_KEY ), userId );
+		return validateSession( cookies.get( COOKIE_KEY ), userId );
 	}
 	
 	static public Session validateSession(Cookie cookie, String userId) throws NotAuthorizedException {

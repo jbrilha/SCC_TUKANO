@@ -25,6 +25,7 @@ public class RestResource {
 			case CONFLICT -> Status.CONFLICT;
 			case NOT_FOUND -> Status.NOT_FOUND;
 			case FORBIDDEN -> Status.FORBIDDEN;
+			case UNAUTHORIZED -> Status.UNAUTHORIZED;
 			case BAD_REQUEST -> Status.BAD_REQUEST;
 			case INTERNAL_ERROR -> Status.INTERNAL_SERVER_ERROR;
 			case NOT_IMPLEMENTED -> Status.NOT_IMPLEMENTED;
